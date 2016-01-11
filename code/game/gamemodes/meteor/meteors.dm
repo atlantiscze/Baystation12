@@ -102,6 +102,9 @@
 	var/meteordrop = /obj/item/weapon/ore/iron
 	var/dropamt = 2
 
+/obj/effect/meteor/proc/get_shield_damage()
+	return hits * hitpwr * (heavy ? 2 : 1) * rand(2, 4)
+
 /obj/effect/meteor/Move()
 	if(z != z_original || loc == dest)
 		qdel(src)

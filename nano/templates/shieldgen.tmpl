@@ -1,0 +1,150 @@
+<h2>STATUS</h2>
+<div class='item'>
+	<div class='itemLabel'>
+		Internal Capacitor:
+	</div>
+	<div class='itemContent'>
+		{{:helper.displayBar(data.internal_percent, 0, 100, 'good')}} {{:data.internal_percent}}%
+	</div>
+</div>
+<div class='item'>
+	<div class='itemLabel'>
+		Field Integrity:
+	</div>
+	<div class='itemContent'>
+		{{:helper.displayBar(data.integrity, 0, data.capacity, 'good')}}
+	</div>
+</div>
+<div class='item'>
+	<div class='itemLabel'>
+		Hull Mode:
+	</div>
+	<div class='itemContent'>
+		{{if data.hull}}
+			<b>ENABLED</b>
+		{{else}}
+			<b>DISABLED</b>
+		{{/if}}
+	</div>
+	<div class='itemLabel'>
+		Generator: 
+	</div>
+	<div class='itemContent'>
+		{{if data.enabled}}
+			<b>ENABLED</b>
+		{{else}}
+			<b>DISABLED</b>
+		{{/if}}
+	</div>
+	<div class='itemLabel'>
+		Power Supply:
+	</div>
+	<div class='itemContent'>
+		{{if data.power_status == 0}}
+			<b>INTERNAL</b>
+		{{else data.power_status == 1}}
+			<b>COMBINED</b>
+		{{else}}
+			<b>EXTERNAL</b>
+		{{/if}}
+	</div>
+	<div class='itemLabel'>
+		Input Setting:
+	</div>
+	<div class='itemContent'>
+		{{:data.cur_input}} W
+	</div>
+	<div class='itemLabel'>
+		Target Field Strength:
+	</div>
+	<div class='itemContent'>
+		{{:data.power_setting}} RW/seg
+	</div>
+	<div class='itemLabel'>
+		Regeneration Rate:
+	</div>
+	<div class='itemContent'>
+		{{:data.cur_regen}} RW/s
+	</div>
+	<div class='itemLabel'>
+		Field Radius:
+	</div>
+	<div class='itemContent'>
+		{{:data.radius}} m
+	</div>
+	{{if data.enabled}}
+		<div class='itemLabel'>
+			Field Status:
+		</div>
+		<div class='itemContent'>
+			{{if data.failed}}
+				<b>OVERLOAD/RESTART</b>
+			{{else}}
+				<b>FIELD STABLE</b>
+			{{/if}}
+		</div>
+	{{/if}}
+</div>
+<h2>Controls</h2>
+<div class='item'>
+		<div class='itemLabel'>
+			Generator Control: 
+		</div>
+		<div class='itemContent'>
+			{{:helper.link("TOGGLE", null, { 'toggle' : 1 })}}
+		</div>
+		<div class='itemLabel'>
+			Input:
+		</div>
+		<div class='itemContent'>
+			{{:helper.link("---", null, { 'modinput' : '-1000000' })}}
+			{{:helper.link("--", null, { 'modinput' : '-500000'})}}
+			{{:helper.link("-", null, { 'modinput' : '-100000'})}}
+			{{:helper.link("+", null, { 'modinput' : '100000'})}}
+			{{:helper.link("++", null, { 'modinput' : '500000'})}}
+			{{:helper.link("+++", null, { 'modinput' : '1000000'})}}
+		</div>
+		<div class='itemLabel'>
+			Target Strength:
+		</div>
+		<div class='itemContent'>
+			{{:helper.link("---", null, { 'modpower' : '-5' })}}
+			{{:helper.link("--", null, { 'modpower' : '-2'})}}
+			{{:helper.link("-", null, { 'modpower' : '-1'})}}
+			{{:helper.link("+", null, { 'modpower' : '1'})}}
+			{{:helper.link("++", null, { 'modpower' : '2'})}}
+			{{:helper.link("+++", null, { 'modpower' : '5'})}}
+		</div>
+		<div class='itemLabel'>
+			Regeneration Rate:
+		</div>
+		<div class='itemContent'>
+			{{:helper.link("---", null, { 'modrate' : '-25' })}}
+			{{:helper.link("--", null, { 'modrate' : '-10'})}}
+			{{:helper.link("-", null, { 'modrate' : '-1'})}}
+			{{:helper.link("+", null, { 'modrate' : '1'})}}
+			{{:helper.link("++", null, { 'modrate' : '10'})}}
+			{{:helper.link("+++", null, { 'modrate' : '25'})}}
+		</div>
+	{{if data.enabled}}
+		<h3>Generator active - field size controls locked!</h3>
+	{{else}}
+		<div class='itemLabel'>
+			Radius: 
+		</div>
+		<div class='itemContent'>
+			{{:helper.link("---", null, { 'modradius' : '-25' })}}
+			{{:helper.link("--", null, { 'modradius' : '-10'})}}
+			{{:helper.link("-", null, { 'modradius' : '-1'})}}
+			{{:helper.link("+", null, { 'modradius' : '1'})}}
+			{{:helper.link("++", null, { 'modradius' : '10'})}}
+			{{:helper.link("+++", null, { 'modradius' : '25'})}}			
+		</div>
+		<div class='itemLabel'>
+			Hull Mode: 
+		</div>
+		<div class='itemContent'>
+			{{:helper.link("TOGGLE", null, { 'mode' : 1 })}}
+		</div>
+	{{/if}}
+</div>

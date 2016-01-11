@@ -1780,6 +1780,8 @@
 #include "code\modules\security levels\security levels.dm"
 #include "code\modules\shieldgen\emergency_shield.dm"
 #include "code\modules\shieldgen\energy_field.dm"
+#include "code\modules\shieldgen\new_field.dm"
+#include "code\modules\shieldgen\new_shieldgen.dm"
 #include "code\modules\shieldgen\sheldwallgen.dm"
 #include "code\modules\shieldgen\shield_capacitor.dm"
 #include "code\modules\shieldgen\shield_gen.dm"
