@@ -20,6 +20,9 @@
 /obj/machinery/conveyor/centcom_auto
 	id = "round_end_belt"
 
+/obj/machinery/conveyor/mining
+	id = "mining"
+
 	// create a conveyor
 /obj/machinery/conveyor/New(loc, newdir, on = 0)
 	..(loc)

@@ -1936,6 +1936,7 @@
 #include "maps\exodus-2.dmm"
 #include "maps\exodus-3.dmm"
 #include "maps\exodus-4.dmm"
+#include "maps\exodus-5-new.dmm"
 #include "maps\exodus-5.dmm"
 #include "maps\exodus-6.dmm"
 // END_INCLUDE
