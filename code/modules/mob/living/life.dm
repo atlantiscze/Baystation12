@@ -8,6 +8,10 @@
 		return
 	if(!loc)
 		return
+
+	if(machine && !CanMouseDrop(machine, src))
+		machine = null
+
 	var/datum/gas_mixture/environment = loc.return_air()
 
 	if(stat != DEAD)
@@ -187,6 +191,7 @@
 				client.screen += global_hud.blurry
 			if (druggy)
 				client.screen += global_hud.druggy
+
 	if(machine)
 		var/viewflags = machine.check_eye(src)
 		if(viewflags < 0)
