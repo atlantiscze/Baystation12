@@ -14,7 +14,7 @@
 
 /obj/machinery/shield/malfai
 	name = "emergency forcefield"
-	desc = "A weak forcefield which seems to be projected by the station's emergency atmosphere containment field"
+	desc = "A weak forcefield which seems to be projected by the station's emergency atmosphere containment field."
 	health = max_health/2 // Half health, it's not suposed to resist much.
 
 /obj/machinery/shield/malfai/process()
@@ -54,8 +54,7 @@
 	playsound(src.loc, 'sound/effects/EMPulse.ogg', 75, 1)
 
 	check_failure()
-	opacity = 1
-	spawn(20) if(src) opacity = 0
+	user.setClickCooldown(DEFAULT_ATTACK_COOLDOWN)
 
 	..()
 
@@ -120,7 +119,6 @@
 	density = 1
 	opacity = 0
 	anchored = 0
-	pressure_resistance = 2*ONE_ATMOSPHERE
 	req_access = list(access_engine)
 	var/const/max_health = 100
 	var/health = max_health
@@ -174,13 +172,12 @@
 		qdel(shield_tile)
 
 /obj/machinery/shieldgen/power_change()
-	..()
-	if(!active) return
+	. = ..()
+	if(!. || !active) return
 	if (stat & NOPOWER)
 		collapse_shields()
 	else
 		create_shields()
-	update_icon()
 
 /obj/machinery/shieldgen/process()
 	if (!active || (stat & NOPOWER))
@@ -264,7 +261,7 @@
 		else
 			user << "The device must first be secured to the floor."
 	return
-	
+
 /obj/machinery/shieldgen/emag_act(var/remaining_charges, var/mob/user)
 	if(!malfunction)
 		malfunction = 1
@@ -285,7 +282,7 @@
 		var/obj/item/stack/cable_coil/coil = W
 		user << "<span class='notice'>You begin to replace the wires.</span>"
 		//if(do_after(user, min(60, round( ((maxhealth/health)*10)+(malfunction*10) ))) //Take longer to repair heavier damage
-		if(do_after(user, 30))
+		if(do_after(user, 30,src))
 			if (coil.use(1))
 				health = max_health
 				malfunction = 0

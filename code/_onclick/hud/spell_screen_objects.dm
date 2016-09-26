@@ -23,10 +23,6 @@
 			spell_holder.client.screen -= src
 		spell_holder = null
 
-/obj/screen/movable/spell_master/ResetVars(var/list/exclude = list())
-	exclude += "spell_objects"
-	..(exclude)
-
 /obj/screen/movable/spell_master/MouseDrop()
 	if(showing)
 		return
@@ -57,15 +53,15 @@
 		overlays.Add(open_state)
 
 /obj/screen/movable/spell_master/proc/open_spellmaster()
-	var/list/screen_loc_xy = text2list(screen_loc,",")
+	var/list/screen_loc_xy = splittext(screen_loc,",")
 
 	//Create list of X offsets
-	var/list/screen_loc_X = text2list(screen_loc_xy[1],":")
+	var/list/screen_loc_X = splittext(screen_loc_xy[1],":")
 	var/x_position = decode_screen_X(screen_loc_X[1])
 	var/x_pix = screen_loc_X[2]
 
 	//Create list of Y offsets
-	var/list/screen_loc_Y = text2list(screen_loc_xy[2],":")
+	var/list/screen_loc_Y = splittext(screen_loc_xy[2],":")
 	var/y_position = decode_screen_Y(screen_loc_Y[1])
 	var/y_pix = screen_loc_Y[2]
 
@@ -93,7 +89,7 @@
 	if(spell.spell_flags & NO_BUTTON) //no button to add if we don't get one
 		return
 
-	var/obj/screen/spell/newscreen = PoolOrNew(/obj/screen/spell)
+	var/obj/screen/spell/newscreen = new /obj/screen/spell()
 	newscreen.spellmaster = src
 	newscreen.spell = spell
 
@@ -125,6 +121,7 @@
 /obj/screen/movable/spell_master/proc/silence_spells(var/amount)
 	for(var/obj/screen/spell/spell in spell_objects)
 		spell.spell.silenced = amount
+		spell.spell.process()
 		spell.update_charge(1)
 
 /obj/screen/movable/spell_master/proc/update_spells(forced = 0, mob/user)

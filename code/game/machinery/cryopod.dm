@@ -30,7 +30,7 @@
 
 /obj/machinery/computer/cryopod/robot
 	name = "robotic storage console"
-	desc = "An interface between crew and the robotic storage systems"
+	desc = "An interface between crew and the robotic storage systems."
 	icon = 'icons/obj/robot_storage.dmi'
 	icon_state = "console"
 	circuit = /obj/item/weapon/circuitboard/robotstoragecontrol
@@ -131,12 +131,12 @@
 
 /obj/item/weapon/circuitboard/cryopodcontrol
 	name = "Circuit board (Cryogenic Oversight Console)"
-	build_path = "/obj/machinery/computer/cryopod"
+	build_path = /obj/machinery/computer/cryopod
 	origin_tech = list(TECH_DATA = 3)
 
 /obj/item/weapon/circuitboard/robotstoragecontrol
 	name = "Circuit board (Robotic Storage Console)"
-	build_path = "/obj/machinery/computer/cryopod/robot"
+	build_path = /obj/machinery/computer/cryopod/robot
 	origin_tech = list(TECH_DATA = 3)
 
 //Decorative structures to go alongside cryopods.
@@ -168,18 +168,19 @@
 	var/disallow_occupant_types = list()
 
 	var/mob/occupant = null       // Person waiting to be despawned.
-	var/time_till_despawn = 18000 // 30 minutes-ish safe period before being despawned.
+	var/time_till_despawn = 9000  // Down to 15 minutes //30 minutes-ish is too long
 	var/time_entered = 0          // Used to keep track of the safe period.
 	var/obj/item/device/radio/intercom/announce //
 
 	var/obj/machinery/computer/cryopod/control_computer
 	var/last_no_computer_message = 0
+	var/applies_stasis = 1
 
 	// These items are preserved when the process() despawn proc occurs.
 	var/list/preserve_items = list(
 		/obj/item/weapon/hand_tele,
 		/obj/item/weapon/card/id/captains_spare,
-		/obj/item/device/aicard,
+		/obj/item/weapon/aicard,
 		/obj/item/device/mmi,
 		/obj/item/device/paicard,
 		/obj/item/weapon/gun,
@@ -203,6 +204,7 @@
 	on_enter_occupant_message = "The storage unit broadcasts a sleep signal to you. Your systems start to shut down, and you enter low-power mode."
 	allow_occupant_types = list(/mob/living/silicon/robot)
 	disallow_occupant_types = list(/mob/living/silicon/robot/drone)
+	applies_stasis = 0
 
 /obj/machinery/cryopod/New()
 	announce = new /obj/item/device/radio/intercom(src)
@@ -364,8 +366,8 @@
 
 
 	//Make an announcement and log the person entering storage.
-	control_computer.frozen_crew += "[occupant.real_name], [occupant.mind.role_alt_title] - [worldtime2text()]"
-	control_computer._admin_logs += "[key_name(occupant)] ([occupant.mind.role_alt_title]) at [worldtime2text()]"
+	control_computer.frozen_crew += "[occupant.real_name], [occupant.mind.role_alt_title] - [stationtime2text()]"
+	control_computer._admin_logs += "[key_name(occupant)] ([occupant.mind.role_alt_title]) at [stationtime2text()]"
 	log_and_message_admins("[key_name(occupant)] ([occupant.mind.role_alt_title]) entered cryostorage.")
 
 	announce.autosay("[occupant.real_name], [occupant.mind.role_alt_title], [on_store_message]", "[on_store_name]")
@@ -382,15 +384,15 @@
 /obj/machinery/cryopod/attackby(var/obj/item/weapon/G as obj, var/mob/user as mob)
 
 	if(istype(G, /obj/item/weapon/grab))
-
+		var/obj/item/weapon/grab/grab = G
 		if(occupant)
 			user << "<span class='notice'>\The [src] is in use.</span>"
 			return
 
-		if(!ismob(G:affecting))
+		if(!ismob(grab.affecting))
 			return
 
-		if(!check_occupant_allowed(G:affecting))
+		if(!check_occupant_allowed(grab.affecting))
 			return
 
 		var/willing = null //We don't want to allow people to be forced into despawning.
@@ -398,17 +400,17 @@
 
 		if(M.client)
 			if(alert(M,"Would you like to enter long-term storage?",,"Yes","No") == "Yes")
-				if(!M || !G || !G:affecting) return
+				if(!M || !grab || !grab.affecting) return
 				willing = 1
 		else
 			willing = 1
 
 		if(willing)
 
-			visible_message("[user] starts putting [G:affecting:name] into \the [src].", 3)
+			visible_message("[user] starts putting [grab.affecting:name] into \the [src].", 3)
 
-			if(do_after(user, 20))
-				if(!M || !G || !G:affecting) return
+			if(do_after(user, 20, src))
+				if(!M || !grab || !grab.affecting) return
 
 				M.forceMove(src)
 
@@ -422,6 +424,9 @@
 			M << "<span class='notice'><b>If you ghost, log out or close your client now, your character will shortly be permanently removed from the round.</b></span>"
 			set_occupant(M)
 			time_entered = world.time
+			if(ishuman(M) && applies_stasis)
+				var/mob/living/carbon/human/H = M
+				H.in_stasis = 1
 
 			// Book keeping!
 			var/turf/location = get_turf(src)
@@ -473,7 +478,7 @@
 
 	visible_message("[usr] starts climbing into \the [src].", 3)
 
-	if(do_after(usr, 20))
+	if(do_after(usr, 20, src))
 
 		if(!usr || !usr.client)
 			return
@@ -487,6 +492,9 @@
 		usr.client.eye = src
 		usr.forceMove(src)
 		set_occupant(usr)
+		if(ishuman(usr) && applies_stasis)
+			var/mob/living/carbon/human/H = occupant
+			H.in_stasis = 1
 
 		icon_state = occupied_icon_state
 
@@ -509,6 +517,9 @@
 		occupant.client.perspective = MOB_PERSPECTIVE
 
 	occupant.forceMove(get_turf(src))
+	if(ishuman(occupant) && applies_stasis)
+		var/mob/living/carbon/human/H = occupant
+		H.in_stasis = 0
 	set_occupant(null)
 
 	icon_state = base_icon_state

@@ -5,11 +5,9 @@ using metal and glass, it uses glass and reagents (usually sulphuric acid).
 */
 
 /obj/machinery/r_n_d/circuit_imprinter
-	name = "Circuit Imprinter"
+	name = "\improper Circuit Imprinter"
 	icon_state = "circuit_imprinter"
 	flags = OPENCONTAINER
-
-	var/list/materials = list("metal" = 0, "glass" = 0, "gold" = 0, "silver" = 0, "phoron" = 0, "uranium" = 0, "diamond" = 0)
 	var/list/datum/design/queue = list()
 	var/progress = 0
 
@@ -22,6 +20,8 @@ using metal and glass, it uses glass and reagents (usually sulphuric acid).
 	active_power_usage = 2500
 
 /obj/machinery/r_n_d/circuit_imprinter/New()
+	materials = default_material_composition.Copy()
+
 	..()
 	component_parts = list()
 	component_parts += new /obj/item/weapon/circuitboard/circuit_imprinter(src)
@@ -118,9 +118,11 @@ using metal and glass, it uses glass and reagents (usually sulphuric acid).
 		return 1
 	if(O.is_open_container())
 		return 0
-	if(!istype(O, /obj/item/stack/material/glass) && !istype(O, /obj/item/stack/material/gold) && !istype(O, /obj/item/stack/material/diamond) && !istype(O, /obj/item/stack/material/uranium))
-		user << "<span class='notice'>You cannot insert this item into \the [src].</span>"
-		return 1
+	if(is_robot_module(O))
+		return 0
+	if(!istype(O, /obj/item/stack/material))
+		user << "<span class='notice'>You cannot insert this item into \the [src]!</span>"
+		return 0
 	if(stat)
 		return 1
 
@@ -128,8 +130,7 @@ using metal and glass, it uses glass and reagents (usually sulphuric acid).
 		user << "<span class='notice'>\The [src]'s material bin is full. Please remove material before adding more.</span>"
 		return 1
 
-	var/obj/item/stack/stack = O
-
+	var/obj/item/stack/material/stack = O
 	var/amount = round(input("How many sheets do you want to add?") as num)
 	if(!O)
 		return
@@ -145,9 +146,9 @@ using metal and glass, it uses glass and reagents (usually sulphuric acid).
 	var/stacktype = stack.type
 	var/t = getMaterialName(stacktype)
 	if(t)
-		if(do_after(usr, 16))
+		if(do_after(usr, 16, src))
 			if(stack.use(amount))
-				user << "<span class='notice'>You add [amount] sheets to \the [src].</span>"
+				user << "<span class='notice'>You add [amount] sheet\s to \the [src].</span>"
 				materials[t] += amount * SHEET_MATERIAL_AMOUNT
 	busy = 0
 	updateUsrDialog()
@@ -162,7 +163,7 @@ using metal and glass, it uses glass and reagents (usually sulphuric acid).
 
 /obj/machinery/r_n_d/circuit_imprinter/proc/canBuild(var/datum/design/D)
 	for(var/M in D.materials)
-		if(materials[M] < D.materials[M])
+		if(materials[M] <= D.materials[M] * mat_efficiency)
 			return 0
 	for(var/C in D.chemicals)
 		if(!reagents.has_reagent(C, D.chemicals[C]))

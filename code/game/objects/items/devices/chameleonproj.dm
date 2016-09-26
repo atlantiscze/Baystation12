@@ -46,7 +46,7 @@
 		qdel(active_dummy)
 		active_dummy = null
 		usr << "<span class='notice'>You deactivate the [src].</span>"
-		var/obj/effect/overlay/T = PoolOrNew(/obj/effect/overlay, get_turf(src))
+		var/obj/effect/overlay/T = new /obj/effect/overlay(get_turf(src))
 		T.icon = 'icons/effects/effects.dmi'
 		flick("emppulse",T)
 		spawn(8) qdel(T)
@@ -54,7 +54,7 @@
 		playsound(get_turf(src), 'sound/effects/pop.ogg', 100, 1, -6)
 		var/obj/O = new saved_item(src)
 		if(!O) return
-		var/obj/effect/dummy/chameleon/C = PoolOrNew(/obj/effect/dummy/chameleon, usr.loc)
+		var/obj/effect/dummy/chameleon/C = new /obj/effect/dummy/chameleon(usr.loc)
 		C.activate(O, usr, saved_icon, saved_icon_state, saved_overlays, src)
 		qdel(O)
 		usr << "<span class='notice'>You activate the [src].</span>"
@@ -78,7 +78,7 @@
 
 /obj/item/device/chameleon/proc/eject_all()
 	for(var/atom/movable/A in active_dummy)
-		A.loc = active_dummy.loc
+		A.forceMove(active_dummy.loc)
 		if(ismob(A))
 			var/mob/M = A
 			M.reset_view(null)
@@ -98,7 +98,7 @@
 	icon_state = new_iconstate
 	overlays = new_overlays
 	set_dir(O.dir)
-	M.loc = src
+	M.forceMove(src)
 	master = C
 	master.active_dummy = src
 
@@ -124,7 +124,8 @@
 	master.disrupt()
 
 /obj/effect/dummy/chameleon/relaymove(var/mob/user, direction)
-	if(istype(loc, /turf/space)) return //No magical space movement!
+	var/area/A = get_area(src)
+	if(!A || !A.has_gravity()) return //No magical space movement!
 
 	if(can_move)
 		can_move = 0

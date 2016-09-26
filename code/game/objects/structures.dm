@@ -99,10 +99,10 @@
 	if (!can_climb(user))
 		return
 
-	usr.visible_message("<span class='warning'>[user] starts climbing onto \the [src]!</span>")
+	usr.visible_message("<span class='warning'>\The [user] starts climbing onto \the [src]!</span>")
 	climbers |= user
 
-	if(!do_after(user,50))
+	if(!do_after(user,(issmall(user) ? 30 : 50), src))
 		climbers -= user
 		return
 
@@ -113,7 +113,7 @@
 	usr.forceMove(get_turf(src))
 
 	if (get_turf(user) == get_turf(src))
-		usr.visible_message("<span class='warning'>[user] climbs onto \the [src]!</span>")
+		usr.visible_message("<span class='warning'>\The [user] climbs onto \the [src]!</span>")
 	climbers -= user
 
 /obj/structure/proc/structure_shaken()
@@ -141,15 +141,15 @@
 
 			switch(pick(list("ankle","wrist","head","knee","elbow")))
 				if("ankle")
-					affecting = H.get_organ(pick("l_foot", "r_foot"))
+					affecting = H.get_organ(pick(BP_L_FOOT, BP_R_FOOT))
 				if("knee")
-					affecting = H.get_organ(pick("l_leg", "r_leg"))
+					affecting = H.get_organ(pick(BP_L_LEG, BP_R_LEG))
 				if("wrist")
-					affecting = H.get_organ(pick("l_hand", "r_hand"))
+					affecting = H.get_organ(pick(BP_L_HAND, BP_R_HAND))
 				if("elbow")
-					affecting = H.get_organ(pick("l_arm", "r_arm"))
+					affecting = H.get_organ(pick(BP_L_ARM, BP_R_ARM))
 				if("head")
-					affecting = H.get_organ("head")
+					affecting = H.get_organ(BP_HEAD)
 
 			if(affecting)
 				M << "<span class='danger'>You land heavily on your [affecting.name]!</span>"
@@ -183,6 +183,6 @@
 	if(!breakable || !damage || !wallbreaker)
 		return 0
 	visible_message("<span class='danger'>[user] [attack_verb] the [src] apart!</span>")
-	user.do_attack_animation(src)
+	attack_animation(user)
 	spawn(1) qdel(src)
 	return 1

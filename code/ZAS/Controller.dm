@@ -158,6 +158,9 @@ Total Unsimulated Turfs: [world.maxx*world.maxy*world.maxz - simulated_turf_coun
 		//defer updating of self-zone-blocked turfs until after all other turfs have been updated.
 		//this hopefully ensures that non-self-zone-blocked turfs adjacent to self-zone-blocked ones
 		//have valid zones when the self-zone-blocked turfs update.
+
+		//This ensures that doorways don't form their own single-turf zones, since doorways are self-zone-blocked and
+		//can merge with an adjacent zone, whereas zones that are formed on adjacent turfs cannot merge with the doorway.
 		var/list/deferred = list()
 
 		for(var/turf/T in updating)
@@ -341,6 +344,13 @@ Total Unsimulated Turfs: [world.maxx*world.maxy*world.maxz - simulated_turf_coun
 	if(!E.sleeping) return
 	active_edges.Add(E)
 	E.sleeping = 0
+	#ifdef ZASDBG
+	if(istype(E, /connection_edge/zone/))
+		var/connection_edge/zone/ZE = E
+		world << "ZASDBG: Active edge! Areas: [get_area(pick(ZE.A.contents))] / [get_area(pick(ZE.B.contents))]"
+	else
+		world << "ZASDBG: Active edge! Area: [get_area(pick(E.A.contents))]"
+	#endif
 
 /datum/controller/air_system/proc/equivalent_pressure(zone/A, zone/B)
 	return A.air.compare(B.air)

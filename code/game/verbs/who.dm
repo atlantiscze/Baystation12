@@ -7,18 +7,16 @@
 
 	var/list/Lines = list()
 
-	if(holder && (R_ADMIN & holder.rights || R_MOD & holder.rights))
+	if(check_rights(R_INVESTIGATE, 0))
 		for(var/client/C in clients)
 			var/entry = "\t[C.key]"
-			if(C.holder && C.holder.fakekey)
-				entry += " <i>(as [C.holder.fakekey])</i>"
 			entry += " - Playing as [C.mob.real_name]"
 			switch(C.mob.stat)
 				if(UNCONSCIOUS)
 					entry += " - <font color='darkgray'><b>Unconscious</b></font>"
 				if(DEAD)
-					if(isobserver(C.mob))
-						var/mob/dead/observer/O = C.mob
+					if(isghost(C.mob))
+						var/mob/observer/ghost/O = C.mob
 						if(O.started_as_observer)
 							entry += " - <font color='gray'>Observing</font>"
 						else
@@ -41,105 +39,58 @@
 
 			if(is_special_character(C.mob))
 				entry += " - <b><font color='red'>Antagonist</font></b>"
+			if(C.is_afk())
+				entry += " (AFK - [C.inactivity2text()])"
 			entry += " (<A HREF='?_src_=holder;adminmoreinfo=\ref[C.mob]'>?</A>)"
 			Lines += entry
 	else
 		for(var/client/C in clients)
-			if(C.holder && C.holder.fakekey)
-				Lines += C.holder.fakekey
-			else
-				Lines += C.key
+			Lines += C.key
 
 	for(var/line in sortList(Lines))
 		msg += "[line]\n"
 
 	msg += "<b>Total Players: [length(Lines)]</b>"
-	src << msg
+	to_chat(src, msg)
 
 /client/verb/staffwho()
 	set category = "Admin"
 	set name = "Staffwho"
 
-	var/msg = ""
-	var/modmsg = ""
-	var/mentmsg = ""
-	var/num_mods_online = 0
-	var/num_admins_online = 0
-	var/num_mentors_online = 0
-	if(holder)
-		for(var/client/C in admins)
-			if(R_ADMIN & C.holder.rights || (!R_MOD & C.holder.rights && !R_MENTOR & C.holder.rights))	//Used to determine who shows up in admin rows
+	var/list/msg = list()
+	var/active_staff = 0
+	var/total_staff = 0
+	var/can_investigate = check_rights(R_INVESTIGATE, 0)
 
-				if(C.holder.fakekey && (!R_ADMIN & holder.rights && !R_MOD & holder.rights))		//Mentors can't see stealthmins
-					continue
-
-				msg += "\t[C] is a [C.holder.rank]"
-
-				if(C.holder.fakekey)
-					msg += " <i>(as [C.holder.fakekey])</i>"
-
-				if(isobserver(C.mob))
-					msg += " - Observing"
-				else if(istype(C.mob,/mob/new_player))
-					msg += " - Lobby"
-				else
-					msg += " - Playing"
-
-				if(C.is_afk())
-					msg += " (AFK)"
-				msg += "\n"
-
-				num_admins_online++
-			else if(R_MOD & C.holder.rights)				//Who shows up in mod/mentor rows.
-				modmsg += "\t[C] is a [C.holder.rank]"
-
-				if(isobserver(C.mob))
-					modmsg += " - Observing"
-				else if(istype(C.mob,/mob/new_player))
-					modmsg += " - Lobby"
-				else
-					modmsg += " - Playing"
-
-				if(C.is_afk())
-					modmsg += " (AFK)"
-				modmsg += "\n"
-				num_mods_online++
-
-			else if(R_MENTOR & C.holder.rights)
-				mentmsg += "\t[C] is a [C.holder.rank]"
-				if(isobserver(C.mob))
-					mentmsg += " - Observing"
-				else if(istype(C.mob,/mob/new_player))
-					mentmsg += " - Lobby"
-				else
-					mentmsg += " - Playing"
-
-				if(C.is_afk())
-					mentmsg += " (AFK)"
-				mentmsg += "\n"
-				num_mentors_online++
-
-	else
-		for(var/client/C in admins)
-			if(R_ADMIN & C.holder.rights || (!R_MOD & C.holder.rights && !R_MENTOR & C.holder.rights))
-				if(!C.holder.fakekey)
-					msg += "\t[C] is a [C.holder.rank]\n"
-					num_admins_online++
-			else if (R_MOD & C.holder.rights)
-				modmsg += "\t[C] is a [C.holder.rank]\n"
-				num_mods_online++
-			else if (R_MENTOR & C.holder.rights)
-				mentmsg += "\t[C] is a [C.holder.rank]\n"
-				num_mentors_online++
+	for(var/client/C in admins)
+		var/line = list()
+		if(!can_investigate && C.is_stealthed())
+			continue
+		total_staff++
+		if(check_rights(R_ADMIN,0,C))
+			line += "\t[C] is \an <b>["\improper[C.holder.rank]"]</b>"
+		else
+			line += "\t[C] is \an ["\improper[C.holder.rank]"]"
+		if(C.is_afk())
+			line += can_investigate ? " (AFK - [C.inactivity2text()])" : "(AFK)"
+		else
+			active_staff++
+		if(can_investigate)
+			if(isghost(C.mob))
+				line += " - Observing"
+			else if(istype(C.mob,/mob/new_player))
+				line += " - Lobby"
+			else
+				line += " - Playing"
+			if(C.is_stealthed())
+				line += " (Stealthed)"
+		line = jointext(line,null)
+		if(check_rights(R_ADMIN,0,C))
+			msg.Insert(1, line)
+		else
+			msg += line
 
 	if(config.admin_irc)
-		src << "<span class='info'>Adminhelps are also sent to IRC. If no admins are available in game try anyway and an admin on IRC may see it and respond.</span>"
-	msg = "<b>Current Admins ([num_admins_online]):</b>\n" + msg
-
-	if(config.show_mods)
-		msg += "\n<b> Current Moderators ([num_mods_online]):</b>\n" + modmsg
-
-	if(config.show_mentors)
-		msg += "\n<b> Current Mentors ([num_mentors_online]):</b>\n" + mentmsg
-
-	src << msg
+		to_chat(src, "<span class='info'>Adminhelps are also sent to IRC. If no admins are available in game try anyway and an admin on IRC may see it and respond.</span>")
+	to_chat(src, "<b>Current Staff ([active_staff]/[total_staff]):</b>")
+	to_chat(src, jointext(msg,"\n"))

@@ -2,8 +2,6 @@ var/datum/antagonist/actor/actor
 
 /datum/antagonist/actor
 	id = MODE_ACTOR
-	bantype = "operative"
-	role_type = BE_OPERATIVE
 	role_text = "NanoTrasen Actor"
 	role_text_plural = "NanoTrasen Actors"
 	welcome_text = "You've been hired to entertain people through the power of television!"
@@ -16,6 +14,7 @@ var/datum/antagonist/actor/actor
 	hard_cap_round = 10
 	initial_spawn_req = 1
 	initial_spawn_target = 1
+	show_objectives_on_creation = 0 //actors are not antagonists and do not need the antagonist greet text
 
 /datum/antagonist/actor/New()
 	..()
@@ -39,7 +38,6 @@ var/datum/antagonist/actor/actor
 
 	return 1
 
-
 /client/verb/join_as_actor()
 	set category = "IC"
 	set name = "Join as Actor"
@@ -48,8 +46,11 @@ var/datum/antagonist/actor/actor
 	if(!MayRespawn(1))
 		return
 
+	var/choice = alert("Are you sure you'd like to join as an actor?", "Confirmation","Yes", "No")
+	if(choice != "Yes")
+		return
 
-	if(istype(usr,/mob/dead/observer) || istype(usr,/mob/new_player))
+	if(isghostmind(usr.mind) || isnewplayer(usr))
 		if(actor.current_antagonists.len >= actor.hard_cap)
 			usr << "No more actors may spawn at the current time."
 			return

@@ -1,6 +1,6 @@
 #define SOLAR_MAX_DIST 40
-#define SOLARGENRATE 1500
 
+var/solar_gen_rate = 1500
 var/list/solars_list = list()
 
 /obj/machinery/power/solar
@@ -64,7 +64,7 @@ var/list/solars_list = list()
 	if(istype(W, /obj/item/weapon/crowbar))
 		playsound(src.loc, 'sound/machines/click.ogg', 50, 1)
 		user.visible_message("<span class='notice'>[user] begins to take the glass off the solar panel.</span>")
-		if(do_after(user, 50))
+		if(do_after(user, 50,src))
 			var/obj/item/solar_assembly/S = locate() in src
 			if(S)
 				S.loc = src.loc
@@ -130,7 +130,7 @@ var/list/solars_list = list()
 		if(powernet == control.powernet)//check if the panel is still connected to the computer
 			if(obscured) //get no light from the sun, so don't generate power
 				return
-			var/sgen = SOLARGENRATE * sunfrac
+			var/sgen = solar_gen_rate * sunfrac
 			add_avail(sgen)
 			control.gen += sgen
 		else //if we're no longer on the same powernet, remove from control computer
@@ -203,11 +203,11 @@ var/list/solars_list = list()
 
 /obj/item/solar_assembly
 	name = "solar panel assembly"
-	desc = "A solar panel assembly kit, allows constructions of a solar panel, or with a tracking circuit board, a solar tracker"
+	desc = "A solar panel assembly kit, allows constructions of a solar panel, or with a tracking circuit board, a solar tracker."
 	icon = 'icons/obj/power.dmi'
 	icon_state = "sp_base"
 	item_state = "electropack"
-	w_class = 4 // Pretty big!
+	w_class = 5 // Pretty big!
 	anchored = 0
 	var/tracker = 0
 	var/glass_type = null
@@ -403,7 +403,7 @@ var/list/solars_list = list()
 /obj/machinery/power/solar_control/attackby(I as obj, user as mob)
 	if(istype(I, /obj/item/weapon/screwdriver))
 		playsound(src.loc, 'sound/items/Screwdriver.ogg', 50, 1)
-		if(do_after(user, 20))
+		if(do_after(user, 20,src))
 			if (src.stat & BROKEN)
 				user << "\blue The broken glass falls out."
 				var/obj/structure/computerframe/A = new /obj/structure/computerframe( src.loc )
@@ -502,11 +502,6 @@ var/list/solars_list = list()
 	update_icon()
 
 
-/obj/machinery/power/solar_control/power_change()
-	..()
-	update_icon()
-
-
 /obj/machinery/power/solar_control/proc/broken()
 	stat |= BROKEN
 	update_icon()
@@ -530,14 +525,11 @@ var/list/solars_list = list()
 /obj/machinery/power/solar_control/autostart
 	track = 2 // Auto tracking mode
 
-/obj/machinery/power/solar_control/autostart/New()
-	..()
-	spawn(150) // Wait 15 seconds to ensure everything was set up properly (such as, powernets, solar panels, etc.
-		src.search_for_connected()
-		if(connected_tracker && track == 2)
-			connected_tracker.set_angle(sun.angle)
-		src.set_panels(cdir)
-
+/obj/machinery/power/solar_control/autostart/initialize()
+	search_for_connected()
+	if(connected_tracker && track == 2)
+		connected_tracker.set_angle(sun.angle)
+		set_panels(cdir)
 //
 // MISC
 //

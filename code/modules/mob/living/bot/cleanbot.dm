@@ -26,6 +26,8 @@
 	var/blood = 1
 	var/list/target_types = list()
 
+	var/maximum_search_range = 7
+
 /mob/living/bot/cleanbot/New()
 	..()
 	get_targets()
@@ -36,11 +38,43 @@
 	if(radio_controller)
 		radio_controller.add_object(listener, beacon_freq, filter = RADIO_NAVBEACONS)
 
+/mob/living/bot/cleanbot/Destroy()
+	. = ..()
+	path = null
+	patrol_path = null
+	target = null
+	ignorelist = null
+
+/mob/living/bot/cleanbot/proc/handle_target()
+	if(loc == target.loc)
+		if(!cleaning)
+			UnarmedAttack(target)
+			return 1
+	if(!path.len)
+//		spawn(0)
+		path = AStar(loc, target.loc, /turf/proc/CardinalTurfsWithAccess, /turf/proc/Distance, 0, 30, id = botcard)
+		if(!path)
+			custom_emote(2, "can't reach \the [target.name] and is giving up for now.")
+			log_debug("[src] can't reach [target.name] ([target.x], [target.y])")
+			ignorelist |= weakref(target)
+			target = null
+			path = list()
+		return
+	if(path.len)
+		step_to(src, path[1])
+		path -= path[1]
+		return 1
+	return
+
 /mob/living/bot/cleanbot/Life()
 	..()
 
 	if(!on)
+		ignorelist = list()
 		return
+
+	if(ignorelist.len && prob(2))
+		ignorelist -= pick(ignorelist)
 
 	if(client)
 		return
@@ -53,86 +87,79 @@
 	if(screwloose && prob(5)) // Make a mess
 		if(istype(loc, /turf/simulated))
 			var/turf/simulated/T = loc
-			if(T.wet < 1)
-				T.wet = 1
-				if(T.wet_overlay)
-					T.overlays -= T.wet_overlay
-					T.wet_overlay = null
-				T.wet_overlay = image('icons/effects/water.dmi', T, "wet_floor")
-				T.overlays += T.wet_overlay
-				spawn(800)
-					if(istype(T) && T.wet < 2)
-						T.wet = 0
-						if(T.wet_overlay)
-							T.overlays -= T.wet_overlay
-							T.wet_overlay = null
+			T.wet_floor()
 
 	if(oddbutton && prob(5)) // Make a big mess
 		visible_message("Something flies out of [src]. He seems to be acting oddly.")
 		var/obj/effect/decal/cleanable/blood/gibs/gib = new /obj/effect/decal/cleanable/blood/gibs(loc)
-		ignorelist += gib
+		var/datum/weakref/g = weakref(gib)
+		ignorelist += g
 		spawn(600)
-			ignorelist -= gib
+			ignorelist -= g
 
-	if(!target) // Find a target
-		for(var/obj/effect/decal/cleanable/D in view(7, src))
-			if(D in ignorelist)
-				continue
-			for(var/T in target_types)
-				if(istype(D, T))
-					target = D
-					patrol_path = list()
+		// Find a target
 
-		if(!target) // No targets in range
-			if(!should_patrol)
-				return
+	if(pulledby) // Don't wiggle if someone pulls you
+		patrol_path = list()
+		return
 
-			if(!patrol_path || !patrol_path.len)
-				if(!signal_sent || signal_sent > world.time + 200) // Waited enough or didn't send yet
-					var/datum/radio_frequency/frequency = radio_controller.return_frequency(beacon_freq)
-					if(!frequency)
-						return
+	var/found_spot
+	search_loop:
+		for(var/i=0, i <= maximum_search_range, i++)
+			cleanable_loop:
+				for(var/obj/effect/decal/cleanable/D in view(i, src))
+					for(var/item in ignorelist)
+						var/datum/weakref/wr = item
+						if(wr.resolve() == D)
+							continue cleanable_loop
+					if(!turf_is_targetable(get_turf(D)))
+						continue
+					for(var/T in target_types)
+						if(istype(D, T))
+							patrol_path = list()
+							target = D
+							found_spot = handle_target()
+							if (found_spot)
+								break search_loop
+							else
+								target = null
+								continue // no need to check the other types
 
-					closest_dist = 9999
-					next_dest = null
-					next_dest_loc = null
 
-					var/datum/signal/signal = new()
-					signal.source = src
-					signal.transmission_method = 1
-					signal.data = list("findbeakon" = "patrol")
-					frequency.post_signal(src, signal, filter = RADIO_NAVBEACONS)
-					signal_sent = world.time
-				else
-					if(next_dest)
-						next_dest_loc = listener.memorized[next_dest]
-						if(next_dest_loc)
-							patrol_path = AStar(loc, next_dest_loc, /turf/proc/CardinalTurfsWithAccess, /turf/proc/Distance, 0, 120, id = botcard, exclude = null)
-							signal_sent = 0
-			else
-				if(pulledby) // Don't wiggle if someone pulls you
-					patrol_path = list()
+	if(!found_spot && !target) // No targets in range
+		if(!patrol_path || !patrol_path.len)
+			if(!signal_sent || signal_sent > world.time + 200) // Waited enough or didn't send yet
+				var/datum/radio_frequency/frequency = radio_controller.return_frequency(beacon_freq)
+				if(!frequency)
 					return
-				if(patrol_path[1] == loc)
-					patrol_path -= patrol_path[1]
-				var/moved = step_towards(src, patrol_path[1])
-				if(moved)
-					patrol_path -= patrol_path[1]
-	if(target)
-		if(loc == target.loc)
-			if(!cleaning)
-				UnarmedAttack(target)
+
+				closest_dist = 9999
+				next_dest = null
+				next_dest_loc = null
+
+				var/datum/signal/signal = new()
+				signal.source = src
+				signal.transmission_method = 1
+				signal.data = list("findbeakon" = "patrol")
+				frequency.post_signal(src, signal, filter = RADIO_NAVBEACONS)
+				signal_sent = world.time
+			else
+				if(next_dest)
+					next_dest_loc = listener.memorized[next_dest]
+					if(next_dest_loc)
+						patrol_path = AStar(loc, next_dest_loc, /turf/proc/CardinalTurfsWithAccess, /turf/proc/Distance, 0, 120, id = botcard, exclude = null)
+						signal_sent = 0
+		else
+			if(pulledby) // Don't wiggle if someone pulls you
+				patrol_path = list()
 				return
-		if(!path.len)
-			spawn(0)
-				path = AStar(loc, target.loc, /turf/proc/CardinalTurfsWithAccess, /turf/proc/Distance, 0, 30, id = botcard)
-				if(!path)
-					path = list()
-			return
-		if(path.len)
-			step_to(src, path[1])
-			path -= path[1]
-			return
+			if(patrol_path[1] == loc)
+				patrol_path -= patrol_path[1]
+			var/moved = step_towards(src, patrol_path[1])
+			if(moved)
+				patrol_path -= patrol_path[1]
+
+
 
 /mob/living/bot/cleanbot/UnarmedAttack(var/obj/effect/decal/cleanable/D, var/proximity)
 	if(!..())
@@ -145,16 +172,18 @@
 		return
 
 	cleaning = 1
-	custom_emote(2, "begins to clean up the [D]")
+	custom_emote(2, "begins to clean up \the [D]")
 	update_icons()
 	var/cleantime = istype(D, /obj/effect/decal/cleanable/dirt) ? 10 : 50
-	if(do_after(src, cleantime))
+	if(do_after(src, cleantime, progress = 0))
 		if(istype(loc, /turf/simulated))
 			var/turf/simulated/f = loc
 			f.dirt = 0
 		if(!D)
 			return
 		qdel(D)
+		if(D == target)
+			target = null
 	cleaning = 0
 	update_icons()
 

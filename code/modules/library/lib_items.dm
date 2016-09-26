@@ -43,9 +43,9 @@
 	else if(istype(O,/obj/item/weapon/screwdriver))
 		playsound(loc, 'sound/items/Screwdriver.ogg', 75, 1)
 		user << "<span class='notice'>You begin dismantling \the [src].</span>"
-		if(do_after(user,25))
+		if(do_after(user,25,src))
 			user << "<span class='notice'>You dismantle \the [src].</span>"
-			new /obj/item/stack/material/wood(get_turf(src), amount = 3)
+			new/obj/item/stack/material/wood(get_turf(src), 5)
 			for(var/obj/item/weapon/book/b in contents)
 				b.loc = (get_turf(src))
 			qdel(src)
@@ -170,7 +170,7 @@
 /obj/item/weapon/book/attackby(obj/item/weapon/W as obj, mob/user as mob)
 	if(carved)
 		if(!store)
-			if(W.w_class < 3)
+			if(W.w_class < NORMAL_ITEM)
 				user.drop_item()
 				W.loc = src
 				store = W
@@ -244,7 +244,7 @@
 	else if(istype(W, /obj/item/weapon/material/knife) || istype(W, /obj/item/weapon/wirecutters))
 		if(carved)	return
 		user << "<span class='notice'>You begin to carve out [title].</span>"
-		if(do_after(user, 30))
+		if(do_after(user, 30, src))
 			user << "<span class='notice'>You carve out the pages from [title]! You didn't want to read it anyway.</span>"
 			carved = 1
 			return
@@ -252,7 +252,7 @@
 		..()
 
 /obj/item/weapon/book/attack(mob/living/carbon/M as mob, mob/living/carbon/user as mob)
-	if(user.zone_sel.selecting == "eyes")
+	if(user.zone_sel.selecting == BP_EYES)
 		user.visible_message("<span class='notice'>You open up the book and show it to [M]. </span>", \
 			"<span class='notice'> [user] opens up a book and shows it to [M]. </span>")
 		M << browse("<TT><I>Penned by [author].</I></TT> <BR>" + "[dat]", "window=book")

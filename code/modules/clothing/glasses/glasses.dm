@@ -15,7 +15,7 @@
 	var/obj/item/clothing/glasses/hud/hud = null	// Hud glasses, if any
 
 /obj/item/clothing/glasses/attack_self(mob/user)
-	if(toggleable)
+	if(toggleable && !user.incapacitated())
 		if(active)
 			active = 0
 			icon_state = off_state
@@ -43,6 +43,7 @@
 	origin_tech = list(TECH_MAGNET = 2, TECH_ENGINEERING = 2)
 	toggleable = 1
 	vision_flags = SEE_TURFS
+	see_invisible = SEE_INVISIBLE_NOLIGHTING
 
 /obj/item/clothing/glasses/meson/New()
 	..()
@@ -51,7 +52,7 @@
 /obj/item/clothing/glasses/meson/prescription
 	name = "prescription mesons"
 	desc = "Optical Meson Scanner with prescription lenses."
-	prescription = 1
+	prescription = 6
 
 /obj/item/clothing/glasses/science
 	name = "Science Goggles"
@@ -107,7 +108,7 @@
 	desc = "Made by Nerd. Co."
 	icon_state = "glasses"
 	item_state = "glasses"
-	prescription = 1
+	prescription = 7
 	body_parts_covered = 0
 
 /obj/item/clothing/glasses/regular/scanners
@@ -149,6 +150,7 @@
 	icon_state = "welding-g"
 	item_state = "welding-g"
 	action_button_name = "Flip Welding Goggles"
+	matter = list(DEFAULT_WALL_MATERIAL = 1500, "glass" = 1000)
 	var/up = 0
 	flash_protection = FLASH_PROTECTION_MAJOR
 	tint = TINT_HEAVY
@@ -162,7 +164,7 @@
 	set name = "Adjust welding goggles"
 	set src in usr
 
-	if(usr.canmove && !usr.stat && !usr.restrained())
+	if(usr.canmove && !usr.incapacitated())
 		if(src.up)
 			src.up = !src.up
 			flags_inv |= HIDEEYES
@@ -206,7 +208,7 @@
 
 /obj/item/clothing/glasses/sunglasses/prescription
 	name = "prescription sunglasses"
-	prescription = 1
+	prescription = 5
 
 /obj/item/clothing/glasses/sunglasses/big
 	desc = "Strangely ancient technology used to help provide rudimentary eye cover. Larger than average enhanced shielding blocks many flashes."
@@ -225,14 +227,17 @@
 
 /obj/item/clothing/glasses/sunglasses/sechud/tactical
 	name = "tactical HUD"
-	desc = "Flash-resistant goggles with inbuilt combat and security information."
+	desc = "Flash-resistant goggles with inbuilt security information. Made from durable synthetic."
 	icon_state = "swatgoggles"
+	armor = list(melee = 20, bullet = 20, laser = 20, energy = 15, bomb = 20, bio = 0, rad = 0)
+	siemens_coefficient = 0.6
 
 /obj/item/clothing/glasses/thermal
 	name = "Optical Thermal Scanner"
 	desc = "Thermals in the shape of glasses."
 	icon_state = "thermal"
 	item_state = "glasses"
+	action_button_name = "Toggle Goggles"
 	origin_tech = list(TECH_MAGNET = 3)
 	toggleable = 1
 	vision_flags = SEE_MOBS
@@ -242,7 +247,7 @@
 	emp_act(severity)
 		if(istype(src.loc, /mob/living/carbon/human))
 			var/mob/living/carbon/human/M = src.loc
-			M << "\red The Optical Thermal Scanner overloads and blinds you!"
+			M << "<span class='danger'>The Optical Thermal Scanner overloads and blinds you!</span>"
 			if(M.glasses == src)
 				M.eye_blind = 3
 				M.eye_blurry = 5
@@ -278,13 +283,13 @@
 
 /obj/item/clothing/glasses/thermal/plain/eyepatch
 	name = "Optical Thermal Eyepatch"
-	desc = "An eyepatch with built-in thermal optics"
+	desc = "An eyepatch with built-in thermal optics."
 	icon_state = "eyepatch"
 	item_state = "eyepatch"
 	body_parts_covered = 0
 
 /obj/item/clothing/glasses/thermal/plain/jensen
 	name = "Optical Thermal Implants"
-	desc = "A set of implantable lenses designed to augment your vision"
+	desc = "A set of implantable lenses designed to augment your vision."
 	icon_state = "thermalimplants"
 	item_state = "syringe_kit"

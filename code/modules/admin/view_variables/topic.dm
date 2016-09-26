@@ -16,11 +16,24 @@
 			return
 
 		var/new_name = sanitize(input(usr,"What would you like to name this mob?","Input a name",M.real_name) as text|null, MAX_NAME_LEN)
-		if( !new_name || !M )	return
+		if(!new_name || !M)	return
 
 		message_admins("Admin [key_name_admin(usr)] renamed [key_name_admin(M)] to [new_name].")
-		M.fully_replace_character_name(M.real_name,new_name)
+		M.fully_replace_character_name(new_name)
 		href_list["datumrefresh"] = href_list["rename"]
+
+	else if(href_list["dressup"])
+		if(!check_rights(R_VAREDIT))	return
+
+		var/mob/living/carbon/human/H = locate(href_list["dressup"])
+		if(!istype(H))
+			usr << "This can only be used on instances of type /mob/living/carbon/human"
+			return
+		var/decl/hierarchy/outfit/outfit = input("Select outfit.", "Select equipment.") as null|anything in outfits()
+		if(!outfit)
+			return
+
+		dressup_human(H, outfit, TRUE)
 
 	else if(href_list["varnameedit"] && href_list["datumedit"])
 		if(!check_rights(R_VAREDIT))	return
@@ -72,17 +85,6 @@
 			return
 
 		src.give_spell(M)
-		href_list["datumrefresh"] = href_list["give_spell"]
-
-	else if(href_list["give_disease"])
-		if(!check_rights(R_ADMIN|R_FUN))	return
-
-		var/mob/M = locate(href_list["give_disease"])
-		if(!istype(M))
-			usr << "This can only be used on instances of type /mob"
-			return
-
-		src.give_disease(M)
 		href_list["datumrefresh"] = href_list["give_spell"]
 
 	else if(href_list["give_disease2"])
@@ -234,7 +236,7 @@
 			usr << "This can only be done to instances of type /datum"
 			return
 
-		src.holder.marked_datum = D
+		src.holder.marked_datum_weak = weakref(D)
 		href_list["datumrefresh"] = href_list["mark_object"]
 
 	else if(href_list["rotatedatum"])
@@ -473,7 +475,10 @@
 			usr << "This can only be done on mobs with clients"
 			return
 
-		nanomanager.send_resources(H.client)
+		nanomanager.close_uis(H)
+		H.client.cache.Cut()
+		var/datum/asset/assets = get_asset_datum(/datum/asset/nanoui)
+		assets.send(H)
 
 		usr << "Resource files sent"
 		H << "Your NanoUI Resource files have been refreshed"

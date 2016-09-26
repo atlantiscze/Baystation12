@@ -69,7 +69,7 @@
 	var/datum/radio_frequency/radio_connection
 
 	var/list/TLV = list()
-	var/list/trace_gas = list("sleeping_agent", "volatile_fuel") //list of other gases that this air alarm is able to detect
+	var/list/trace_gas = list("sleeping_agent") //list of other gases that this air alarm is able to detect
 
 	var/danger_level = 0
 	var/pressure_dangerlevel = 0
@@ -91,13 +91,8 @@
 /obj/machinery/alarm/server/New()
 	..()
 	req_access = list(access_rd, access_atmospherics, access_engine_equip)
-	TLV["oxygen"] =			list(-1.0, -1.0,-1.0,-1.0) // Partial pressure, kpa
-	TLV["carbon dioxide"] = list(-1.0, -1.0,   5,  10) // Partial pressure, kpa
-	TLV["phoron"] =			list(-1.0, -1.0, 0.2, 0.5) // Partial pressure, kpa
-	TLV["other"] =			list(-1.0, -1.0, 0.5, 1.0) // Partial pressure, kpa
-	TLV["pressure"] =		list(0,ONE_ATMOSPHERE*0.10,ONE_ATMOSPHERE*1.40,ONE_ATMOSPHERE*1.60) /* kpa */
-	TLV["temperature"] =	list(20, 40, 140, 160) // K
-	target_temperature = 90
+	TLV["temperature"] =	list(T0C-26, T0C, T0C+30, T0C+40) // K
+	target_temperature = T0C+10
 
 /obj/machinery/alarm/Destroy()
 	unregister_radio(src, frequency)
@@ -105,24 +100,21 @@
 	wires = null
 	return ..()
 
-/obj/machinery/alarm/New(var/loc, var/dir, var/building = 0)
-	..()
+/obj/machinery/alarm/New(var/loc, var/dir, atom/frame)
+	..(loc)
 
-	if(building)
-		if(loc)
-			src.loc = loc
+	if(dir)
+		src.set_dir(dir)
 
-		if(dir)
-			src.set_dir(dir)
-
+	if(istype(frame))
 		buildstage = 0
 		wiresexposed = 1
 		pixel_x = (dir & 3)? 0 : (dir == 4 ? -24 : 24)
 		pixel_y = (dir & 3)? (dir ==1 ? -24 : 24) : 0
 		update_icon()
-		return
-
-	first_run()
+		frame.transfer_fingerprints_to(src)
+	else
+		first_run()
 
 /obj/machinery/alarm/proc/first_run()
 	alarm_area = get_area(src)
@@ -321,7 +313,7 @@
 			new_color = "#03A728"
 		if (1)
 			icon_state = "alarm2" //yes, alarm2 is yellow alarm
-			new_color = "#EC8B2F"
+			new_color = COLOR_SUN
 		if (2)
 			icon_state = "alarm1"
 			new_color = "#DA0205"
@@ -832,11 +824,6 @@
 
 	return ..()
 
-/obj/machinery/alarm/power_change()
-	..()
-	spawn(rand(0,15))
-		update_icon()
-
 /obj/machinery/alarm/examine(mob/user)
 	..(user)
 	if (buildstage < 2)
@@ -901,13 +888,13 @@ FIRE ALARM
 	else
 		if(!src.detecting)
 			icon_state = "fire1"
-			set_light(l_range = 4, l_power = 2, l_color = "#ff0000")
+			set_light(l_range = 4, l_power = 2, l_color = COLOR_RED)
 		else
 			icon_state = "fire0"
 			switch(seclevel)
-				if("green")	set_light(l_range = 2, l_power = 0.5, l_color = "#00ff00")
+				if("green")	set_light(l_range = 2, l_power = 0.5, l_color = COLOR_LIME)
 				if("blue")	set_light(l_range = 2, l_power = 0.5, l_color = "#1024A9")
-				if("red")	set_light(l_range = 4, l_power = 2, l_color = "#ff0000")
+				if("red")	set_light(l_range = 4, l_power = 2, l_color = COLOR_RED)
 				if("delta")	set_light(l_range = 4, l_power = 2, l_color = "#FF6633")
 
 		src.overlays += image('icons/obj/monitors.dmi', "overlay_[seclevel]")
@@ -1007,11 +994,6 @@ FIRE ALARM
 
 	return
 
-/obj/machinery/firealarm/power_change()
-	..()
-	spawn(rand(0,15))
-		update_icon()
-
 /obj/machinery/firealarm/attack_hand(mob/user as mob)
 	if(user.stat || stat & (NOPOWER|BROKEN))
 		return
@@ -1108,20 +1090,18 @@ FIRE ALARM
 
 
 
-/obj/machinery/firealarm/New(loc, dir, building)
-	..()
-
-	if(loc)
-		src.loc = loc
+/obj/machinery/firealarm/New(loc, dir, atom/frame)
+	..(loc)
 
 	if(dir)
 		src.set_dir(dir)
 
-	if(building)
+	if(istype(frame))
 		buildstage = 0
 		wiresexposed = 1
 		pixel_x = (dir & 3)? 0 : (dir == 4 ? -24 : 24)
 		pixel_y = (dir & 3)? (dir ==1 ? -24 : 24) : 0
+		frame.transfer_fingerprints_to(src)
 
 /obj/machinery/firealarm/proc/set_security_level(var/newlevel)
 	if(seclevel != newlevel)
@@ -1129,7 +1109,7 @@ FIRE ALARM
 		update_icon()
 
 /obj/machinery/firealarm/initialize()
-	if(z in config.contact_levels)
+	if(z in using_map.contact_levels)
 		set_security_level(security_level? get_security_level() : "green")
 
 /*
@@ -1140,7 +1120,7 @@ Just a object used in constructing fire alarms
 	name = "fire alarm electronics"
 	icon = 'icons/obj/doors/door_assembly.dmi'
 	icon_state = "door_electronics"
-	desc = "A circuit. It has a label on it, it says \"Can handle heat levels up to 40 degrees celsius!\""
+	desc = "A circuit. It has a label on it, it says \"Can handle heat levels up to 40 degrees celsius!\"."
 	w_class = 2.0
 	matter = list(DEFAULT_WALL_MATERIAL = 50, "glass" = 50)
 

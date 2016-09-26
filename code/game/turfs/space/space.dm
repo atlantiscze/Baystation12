@@ -9,18 +9,20 @@
 //	heat_capacity = 700000 No.
 
 /turf/space/New()
+	if(icon_state == "0")
+		icon_state = "[((x + y) ^ ~(x * y)) % 25]"
 	if(!istype(src, /turf/space/transit))
-		icon_state = "[((x + y) ^ ~(x * y) + z) % 25]"
+		icon_state = "[((x + y) ^ ~(x * y)) % 25]"
 	update_starlight()
 	..()
-
-/turf/space/is_space()
-	return 1
 
 // override for space turfs, since they should never hide anything
 /turf/space/levelupdate()
 	for(var/obj/O in src)
 		O.hide(0)
+
+/turf/space/is_solid_structure()
+	return locate(/obj/structure/lattice, src) //counts as solid structure if it has a lattice
 
 /turf/space/proc/update_starlight()
 	if(!config.starlight)
@@ -62,15 +64,8 @@
 // Ported from unstable r355
 
 /turf/space/Entered(atom/movable/A as mob|obj)
-	if(movement_disabled)
-		usr << "<span class='warning'>Movement is admin-disabled.</span>" //This is to identify lag problems
-		return
 	..()
-	if ((!(A) || src != A.loc))	return
-
-	inertial_drift(A)
-
-	if(ticker && ticker.mode)
+	if(A && A.loc == src && ticker && ticker.mode)
 
 		// Okay, so let's make it so that people can travel z levels but not nuke disks!
 		// if(ticker.mode.name == "mercenary")	return
@@ -188,3 +183,8 @@
 
 /turf/space/ChangeTurf(var/turf/N, var/tell_universe=1, var/force_lighting_update = 0)
 	return ..(N, tell_universe, 1)
+
+//Bluespace turfs for shuttles and possible future transit use
+/turf/space/bluespace
+	name = "bluespace"
+	icon_state = "bluespace"

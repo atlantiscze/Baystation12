@@ -334,6 +334,12 @@
 	id = "borg_reset_module"
 	build_path = /obj/item/borg/upgrade/reset
 
+/datum/design/item/robot_upgrade/floodlight
+	name = "Floodlight module"
+	desc = "Used to boost cyborg's integrated light intensity."
+	id = "borg_floodlight_module"
+	build_path = /obj/item/borg/upgrade/floodlight
+
 /datum/design/item/robot_upgrade/restart
 	name = "Emergency restart module"
 	desc = "Used to force a restart of a disabled-but-repaired robot, bringing it back online."
@@ -361,6 +367,13 @@
 	id = "borg_jetpack_module"
 	materials = list(DEFAULT_WALL_MATERIAL = 10000, "phoron" = 15000, "uranium" = 20000)
 	build_path = /obj/item/borg/upgrade/jetpack
+
+/datum/design/item/robot_upgrade/rcd
+	name = "RCD module"
+	desc = "A rapid construction device module for use during construction operations."
+	id = "borg_rcd_module"
+	materials = list(DEFAULT_WALL_MATERIAL = 25000, "phoron" = 10000, "gold" = 1000, "silver" = 1000)
+	build_path = /obj/item/borg/upgrade/rcd
 
 /datum/design/item/robot_upgrade/syndicate
 	name = "Illegal upgrade"
@@ -395,7 +408,7 @@
 
 /datum/design/item/mecha/drill
 	name = "Drill"
-	id = "drill"
+	id = "mech_drill"
 	build_path = /obj/item/mecha_parts/mecha_equipment/tool/drill
 
 /datum/design/item/mecha/extinguisher
@@ -407,6 +420,12 @@
 	name = "Cable layer"
 	id = "mech_cable_layer"
 	build_path = /obj/item/mecha_parts/mecha_equipment/tool/cable_layer
+	
+/datum/design/item/mecha/flaregun
+	name = "Flare launcher"
+	id = "mecha_flare_gun"
+	build_path = /obj/item/mecha_parts/mecha_equipment/weapon/ballistic/missile_rack/flare
+	materials = list(DEFAULT_WALL_MATERIAL = 12500)
 
 /datum/design/item/mecha/sleeper
 	name = "Sleeper"
@@ -437,11 +456,6 @@
 
 //obj/item/mecha_parts/mecha_equipment/repair_droid,
 //obj/item/mecha_parts/mecha_equipment/jetpack, //TODO MECHA JETPACK SPRITE MISSING
-
-/datum/design/item/mecha/generator
-	name = "Phoron generator"
-	id = "mech_generator"
-	build_path = /obj/item/mecha_parts/mecha_equipment/generator
 
 /datum/design/item/mecha/taser
 	name = "PBT \"Pacifier\" mounted taser"

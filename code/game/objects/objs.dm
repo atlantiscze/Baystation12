@@ -2,16 +2,13 @@
 	//Used to store information about the contents of the object.
 	var/list/matter
 	var/w_class // Size of the object.
-	var/list/origin_tech = null	//Used by R&D to determine what research bonuses it grants.
 	var/unacidable = 0 //universal "unacidabliness" var, here so you can use it in any obj.
 	animate_movement = 2
 	var/throwforce = 1
-	var/list/attack_verb = list() //Used in attackby() to say how something was attacked "[x] has been [z.attack_verb] by [y] with [z]"
 	var/sharp = 0		// whether this object cuts
 	var/edge = 0		// whether this object is more likely to dismember
 	var/in_use = 0 // If we have a user using us, this will be set on. We will check if the user has stopped using us, and thus stop updating and LAGGING EVERYTHING!
 	var/damtype = "brute"
-	var/force = 0
 	var/armor_penetration = 0
 
 /obj/Destroy()
@@ -47,16 +44,22 @@
 /obj/proc/CouldUseTopic(var/mob/user)
 	user.AddTopicPrint(src)
 
-/mob/proc/AddTopicPrint(var/obj/target)
+/mob/proc/AddTopicPrint(var/atom/target)
+	if(!istype(target))
+		return
 	target.add_hiddenprint(src)
 
-/mob/living/AddTopicPrint(var/obj/target)
+/mob/living/AddTopicPrint(var/atom/target)
+	if(!istype(target))
+		return
 	if(Adjacent(target))
 		target.add_fingerprint(src)
 	else
 		target.add_hiddenprint(src)
 
-/mob/living/silicon/ai/AddTopicPrint(var/obj/target)
+/mob/living/silicon/ai/AddTopicPrint(var/atom/target)
+	if(!istype(target))
+		return
 	target.add_hiddenprint(src)
 
 /obj/proc/CouldNotUseTopic(var/mob/user)
@@ -126,6 +129,7 @@
 
 /obj/attack_ghost(mob/user)
 	ui_interact(user)
+	tg_ui_interact(user)
 	..()
 
 /obj/proc/interact(mob/user)

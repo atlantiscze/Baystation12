@@ -2,7 +2,7 @@
 //Robotic Component Analyser, basically a health analyser for robots
 //
 /obj/item/device/robotanalyzer
-	name = "cyborg analyzer"
+	name = "robot analyzer"
 	icon_state = "robotanalyzer"
 	item_state = "analyzer"
 	desc = "A hand-held scanner able to diagnose robotic injuries."
@@ -17,7 +17,7 @@
 	var/mode = 1;
 
 /obj/item/device/robotanalyzer/attack(mob/living/M as mob, mob/living/user as mob)
-	if(( (CLUMSY in user.mutations) || user.getBrainLoss() >= 60) && prob(50))
+	if((CLUMSY in user.mutations) && prob(50))
 		user << text("\red You try to analyze the floor's vitals!")
 		for(var/mob/O in viewers(M, null))
 			O.show_message(text("\red [user] has analyzed the floor's vitals!"), 1)
@@ -65,15 +65,17 @@
 			user.show_message("\blue Operating Temperature: [M.bodytemperature-T0C]&deg;C ([M.bodytemperature*1.8-459.67]&deg;F)", 1)
 
 		if("prosthetics")
+
 			var/mob/living/carbon/human/H = M
 			user << "<span class='notice'>Analyzing Results for \the [H]:</span>"
+			if(H.isSynthetic())
+				user << "System instability: <font color='green'>[H.getToxLoss()]</font>"
 			user << "Key: <font color='#FFA500'>Electronics</font>/<font color='red'>Brute</font>"
-
 			user << "<span class='notice'>External prosthetics:</span>"
 			var/organ_found
 			if(H.internal_organs.len)
 				for(var/obj/item/organ/external/E in H.organs)
-					if(!(E.status & ORGAN_ROBOT))
+					if(!(E.robotic >= ORGAN_ROBOT))
 						continue
 					organ_found = 1
 					user << "[E.name]: <font color='red'>[E.brute_dam]</font> <font color='#FFA500'>[E.burn_dam]</font>"
@@ -84,7 +86,7 @@
 			organ_found = null
 			if(H.internal_organs.len)
 				for(var/obj/item/organ/O in H.internal_organs)
-					if(!(O.status & ORGAN_ROBOT))
+					if(!(O.robotic >= ORGAN_ROBOT))
 						continue
 					organ_found = 1
 					user << "[O.name]: <font color='red'>[O.damage]</font>"

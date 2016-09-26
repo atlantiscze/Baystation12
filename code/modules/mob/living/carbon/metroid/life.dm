@@ -33,20 +33,16 @@
 	else
 		loc_temp = environment.temperature
 
-	if(loc_temp < 310.15) // a cold place
-		bodytemperature += adjust_body_temperature(bodytemperature, loc_temp, 1)
-	else // a hot place
-		bodytemperature += adjust_body_temperature(bodytemperature, loc_temp, 1)
-
-	//Account for massive pressure differences
+	bodytemperature += adjust_body_temperature(bodytemperature, loc_temp, 1)
 
 	if(bodytemperature < (T0C + 5)) // start calculating temperature damage etc
-
-		if(bodytemperature <= (T0C - 50)) // hurt temperature
-			if(bodytemperature <= 50) // sqrting negative numbers is bad
+		if(bodytemperature <= hurt_temperature)
+			if(bodytemperature <= die_temperature)
 				adjustToxLoss(200)
 			else
-				adjustToxLoss(round(sqrt(bodytemperature)) * 2)
+				// could be more fancy, but doesn't worth the complexity: when the slimes goes into a cold area
+				// the damage is mostly determined by how fast its body cools
+				adjustToxLoss(30)
 
 	updatehealth()
 
@@ -71,14 +67,10 @@
 
 /mob/living/carbon/slime/handle_chemicals_in_body()
 	chem_effects.Cut()
-	analgesic = 0
 
 	if(touching) touching.metabolize()
 	if(ingested) ingested.metabolize()
 	if(bloodstr) bloodstr.metabolize()
-
-	if(CE_PAINKILLER in chem_effects)
-		analgesic = chem_effects[CE_PAINKILLER]
 
 	src.updatehealth()
 
@@ -110,14 +102,11 @@
 	else
 		if (src.paralysis || src.stunned || src.weakened || (status_flags && FAKEDEATH)) //Stunned etc.
 			if (src.stunned > 0)
-				AdjustStunned(-1)
 				src.stat = 0
 			if (src.weakened > 0)
-				AdjustWeakened(-1)
 				src.lying = 0
 				src.stat = 0
 			if (src.paralysis > 0)
-				AdjustParalysis(-1)
 				src.blinded = 0
 				src.lying = 0
 				src.stat = 0
@@ -222,7 +211,7 @@
 				if(issilicon(L) && (rabid || attacked)) // They can't eat silicons, but they can glomp them in defence
 					targets += L // Possible target found!
 
-				if(istype(L, /mob/living/carbon/human) && dna) //Ignore slime(wo)men
+				if(istype(L, /mob/living/carbon/human)) //Ignore slime(wo)men
 					var/mob/living/carbon/human/H = L
 					if(H.species.name == "Slime")
 						continue
@@ -301,27 +290,20 @@
 
 		if(Target.Adjacent(src))
 			if(istype(Target, /mob/living/silicon)) // Glomp the silicons
-				if(!Atkcool)
-					a_intent = I_HURT
-					UnarmedAttack(Target)
-					Atkcool = 1
-					spawn(45)
-						Atkcool = 0
+				a_intent = I_HURT
+				UnarmedAttack(Target)
 				AIproc = 0
 				return
 
 			if(Target.client && !Target.lying && prob(60 + powerlevel * 4)) // Try to take down the target first
-				if(!Atkcool)
-					Atkcool = 1
-					spawn(45)
-						Atkcool = 0
-
-					a_intent = I_DISARM
-					UnarmedAttack(Target)
+				a_intent = I_DISARM
+				UnarmedAttack(Target)
 
 			else
 				if(!Atkcool)
 					a_intent = I_GRAB
+					if(invalidFeedTarget(Target))
+						a_intent = I_HURT //just glomp them instead
 					UnarmedAttack(Target)
 
 		else if(Target in view(7, src))

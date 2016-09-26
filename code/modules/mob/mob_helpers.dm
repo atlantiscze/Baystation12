@@ -11,15 +11,27 @@
 		return L.mob_size <= MOB_SMALL
 	return 0
 
+//returns the number of size categories between two mob_sizes, rounded. Positive means A is larger than B
+/proc/mob_size_difference(var/mob_size_A, var/mob_size_B)
+	return round(log(2, mob_size_A/mob_size_B), 1)
+
+/mob/proc/can_wield_item(obj/item/W)
+	if(W.w_class >= LARGE_ITEM && issmall(src))
+		return FALSE //M is too small to wield this
+	return TRUE
+
 /mob/living/proc/isSynthetic()
 	return 0
 
 /mob/living/carbon/human/isSynthetic()
-	// If they are 100% robotic, they count as synthetic.
-	for(var/obj/item/organ/external/E in organs)
-		if(!(E.status & ORGAN_ROBOT))
-			return 0
-	return 1
+	if(isnull(full_prosthetic))
+		robolimb_count = 0
+		for(var/obj/item/organ/external/E in organs)
+			if(E.robotic >= ORGAN_ROBOT)
+				robolimb_count++
+		if(robolimb_count == organs.len)
+			full_prosthetic = 1
+	return full_prosthetic
 
 /mob/living/silicon/isSynthetic()
 	return 1
@@ -31,8 +43,8 @@
 	return istype(species, /datum/species/monkey)
 
 proc/isdeaf(A)
-	if(istype(A, /mob))
-		var/mob/M = A
+	if(isliving(A))
+		var/mob/living/M = A
 		return (M.sdisabilities & DEAF) || M.ear_deaf
 	return 0
 
@@ -76,42 +88,42 @@ proc/getsensorlevel(A)
 
 //The base miss chance for the different defence zones
 var/list/global/base_miss_chance = list(
-	"head" = 40,
-	"chest" = 10,
-	"groin" = 20,
-	"l_leg" = 20,
-	"r_leg" = 20,
-	"l_arm" = 20,
-	"r_arm" = 20,
-	"l_hand" = 50,
-	"r_hand" = 50,
-	"l_foot" = 50,
-	"r_foot" = 50,
+	BP_HEAD = 40,
+	BP_CHEST = 10,
+	BP_GROIN = 20,
+	BP_L_LEG = 20,
+	BP_R_LEG = 20,
+	BP_L_ARM = 20,
+	BP_R_ARM = 20,
+	BP_L_HAND = 50,
+	BP_R_HAND = 50,
+	BP_L_FOOT = 50,
+	BP_R_FOOT = 50,
 )
 
 //Used to weight organs when an organ is hit randomly (i.e. not a directed, aimed attack).
 //Also used to weight the protection value that armour provides for covering that body part when calculating protection from full-body effects.
 var/list/global/organ_rel_size = list(
-	"head" = 25,
-	"chest" = 70,
-	"groin" = 30,
-	"l_leg" = 25,
-	"r_leg" = 25,
-	"l_arm" = 25,
-	"r_arm" = 25,
-	"l_hand" = 10,
-	"r_hand" = 10,
-	"l_foot" = 10,
-	"r_foot" = 10,
+	BP_HEAD = 25,
+	BP_CHEST = 70,
+	BP_GROIN = 30,
+	BP_L_LEG = 25,
+	BP_R_LEG = 25,
+	BP_L_ARM = 25,
+	BP_R_ARM = 25,
+	BP_L_HAND = 10,
+	BP_R_HAND = 10,
+	BP_L_FOOT = 10,
+	BP_R_FOOT = 10,
 )
 
 /proc/check_zone(zone)
-	if(!zone)	return "chest"
+	if(!zone)	return BP_CHEST
 	switch(zone)
-		if("eyes")
-			zone = "head"
-		if("mouth")
-			zone = "head"
+		if(BP_EYES)
+			zone = BP_HEAD
+		if(BP_MOUTH)
+			zone = BP_HEAD
 	return zone
 
 // Returns zone with a certain probability. If the probability fails, or no zone is specified, then a random body part is chosen.
@@ -126,17 +138,17 @@ var/list/global/organ_rel_size = list(
 	var/ran_zone = zone
 	while (ran_zone == zone)
 		ran_zone = pick (
-			organ_rel_size["head"]; "head",
-			organ_rel_size["chest"]; "chest",
-			organ_rel_size["groin"]; "groin",
-			organ_rel_size["l_arm"]; "l_arm",
-			organ_rel_size["r_arm"]; "r_arm",
-			organ_rel_size["l_leg"]; "l_leg",
-			organ_rel_size["r_leg"]; "r_leg",
-			organ_rel_size["l_hand"]; "l_hand",
-			organ_rel_size["r_hand"]; "r_hand",
-			organ_rel_size["l_foot"]; "l_foot",
-			organ_rel_size["r_foot"]; "r_foot",
+			organ_rel_size[BP_HEAD];   BP_HEAD,
+			organ_rel_size[BP_CHEST];  BP_CHEST,
+			organ_rel_size[BP_GROIN];  BP_GROIN,
+			organ_rel_size[BP_L_ARM];  BP_L_ARM,
+			organ_rel_size[BP_R_ARM];  BP_R_ARM,
+			organ_rel_size[BP_L_LEG];  BP_L_LEG,
+			organ_rel_size[BP_R_LEG];  BP_R_LEG,
+			organ_rel_size[BP_L_HAND]; BP_L_HAND,
+			organ_rel_size[BP_R_HAND]; BP_R_HAND,
+			organ_rel_size[BP_L_FOOT]; BP_L_FOOT,
+			organ_rel_size[BP_R_FOOT]; BP_R_FOOT,
 		)
 
 	return ran_zone
@@ -298,7 +310,7 @@ It's fairly easy to fix if dealing with single letters but not so much with comp
 
 		var/atom/oldeye=M.client.eye
 		var/aiEyeFlag = 0
-		if(istype(oldeye, /mob/eye/aiEye))
+		if(istype(oldeye, /mob/observer/eye/aiEye))
 			aiEyeFlag = 1
 
 		var/x
@@ -409,7 +421,7 @@ proc/is_blind(A)
 	var/keyname
 	if(subject && subject.client)
 		var/client/C = subject.client
-		keyname = (C.holder && C.holder.fakekey) ? C.holder.fakekey : C.key
+		keyname = C.key
 		if(C.mob) //Most of the time this is the dead/observer mob; we can totally use him if there is no better name
 			var/mindname
 			var/realname = C.mob.real_name
@@ -423,16 +435,18 @@ proc/is_blind(A)
 				name = realname
 
 	for(var/mob/M in player_list)
-		if(M.client && ((!istype(M, /mob/new_player) && M.stat == DEAD) || (M.client.holder && !is_mentor(M.client))) && (M.client.prefs.toggles & CHAT_DEAD))
+		if(M.client && ((!istype(M, /mob/new_player) && M.stat == DEAD) || (M.client.holder && !is_mentor(M.client))) && M.is_preference_enabled(/datum/client_preference/show_dsay))
 			var/follow
 			var/lname
 			if(subject)
+				if(M.is_key_ignored(subject.client.key)) // If we're ignored, do nothing.
+					continue
 				if(subject != M)
 					follow = "([ghost_follow_link(subject, M)]) "
 				if(M.stat != DEAD && M.client.holder)
 					follow = "([admin_jump_link(subject, M.client.holder)]) "
-				var/mob/dead/observer/DM
-				if(istype(subject, /mob/dead/observer))
+				var/mob/observer/ghost/DM
+				if(isghost(subject))
 					DM = subject
 				if(M.client.holder) 							// What admins see
 					lname = "[keyname][(DM && DM.anonsay) ? "*" : (DM ? "" : "^")] ([name])"
@@ -475,7 +489,7 @@ proc/is_blind(A)
 				else
 					name = M.real_name
 		if(!name)
-			name = (C.holder && C.holder.fakekey) ? C.holder.fakekey : C.key
+			name = C.key
 		if(joined_ghosts)
 			say_dead_direct("The ghost of <span class='name'>[name]</span> now [pick("skulks","lurks","prowls","creeps","stalks")] among the dead. [message]")
 		else
@@ -552,7 +566,7 @@ proc/is_blind(A)
 			perpname = id.registered_name
 
 		var/datum/data/record/R = find_security_record("name", perpname)
-		if(check_records && !R)
+		if(check_records && !R && !isMonkey())
 			threatcount += 4
 
 		if(check_arrest && R && (R.fields["criminal"] == "*Arrest*"))
@@ -575,7 +589,7 @@ proc/is_blind(A)
 	if(istype(P))
 		return P
 
-mob/dead/observer/get_multitool()
+/mob/observer/ghost/get_multitool()
 	return can_admin_interact() && ..(ghost_multitool)
 
 /mob/living/carbon/human/get_multitool()
@@ -586,3 +600,42 @@ mob/dead/observer/get_multitool()
 
 /mob/living/silicon/ai/get_multitool()
 	return ..(aiMulti)
+
+/proc/get_both_hands(mob/living/carbon/M)
+	if(!istype(M))
+		return
+	var/list/hands = list(M.l_hand, M.r_hand)
+	return hands
+
+/mob/proc/refresh_client_images()
+	if(client)
+		client.images |= client_images
+
+/mob/proc/hide_client_images()
+	if(client)
+		client.images -= client_images
+
+/mob/proc/add_client_image(var/image)
+	if(image in client_images)
+		return
+	client_images += image
+	if(client)
+		client.images += image
+
+/mob/proc/remove_client_image(var/image)
+	client_images -= image
+	if(client)
+		client.images -= image
+
+/mob/proc/flash_eyes(intensity = FLASH_PROTECTION_MODERATE, override_blindness_check = FALSE, affect_silicon = FALSE, visual = FALSE, type = /obj/screen/fullscreen/flash)
+	return
+
+/mob/proc/fully_replace_character_name(var/new_name, var/in_depth = TRUE)
+	if(!new_name || new_name == real_name)	return 0
+	real_name = new_name
+	name = new_name
+	if(mind)
+		mind.name = new_name
+	if(dna)
+		dna.real_name = real_name
+	return 1

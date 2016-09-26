@@ -1,5 +1,6 @@
 /datum/admin_secret_item/admin_secret/prison_warp
 	name = "Prison Warp"
+	warn_before_use = TRUE
 
 /datum/admin_secret_item/admin_secret/prison_warp/can_execute(var/mob/user)
 	if(!ticker) return 0
@@ -12,7 +13,7 @@
 	for(var/mob/living/carbon/human/H in mob_list)
 		var/turf/T = get_turf(H)
 		var/security = 0
-		if((T && T in config.admin_levels) || prisonwarped.Find(H))
+		if((T && T in using_map.admin_levels) || prisonwarped.Find(H))
 		//don't warp them if they aren't ready or are already there
 			continue
 		H.Paralyse(5)

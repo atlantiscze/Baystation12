@@ -10,6 +10,7 @@
 	icon_state = "suitstorage000000100" //order is: [has helmet][has suit][has human][is open][is locked][is UV cycling][is powered][is dirty/broken] [is superUVcycling]
 	anchored = 1
 	density = 1
+	req_access = list(access_captain,access_heads)
 	var/mob/living/carbon/human/OCCUPANT = null
 	var/obj/item/clothing/suit/space/SUIT = null
 	var/SUIT_TYPE = null
@@ -33,6 +34,64 @@
 	SUIT_TYPE = /obj/item/clothing/suit/space
 	HELMET_TYPE = /obj/item/clothing/head/helmet/space
 	MASK_TYPE = /obj/item/clothing/mask/breath
+	req_access = list(access_eva)
+
+/obj/machinery/suit_storage_unit/atmos
+	name = "Atmospherics Voidsuit Storage Unit"
+	SUIT_TYPE = /obj/item/clothing/suit/space/void/atmos
+	HELMET_TYPE = /obj/item/clothing/head/helmet/space/void/atmos
+	MASK_TYPE = /obj/item/clothing/mask/breath
+	req_access = list(access_atmospherics)
+	islocked = 1
+
+/obj/machinery/suit_storage_unit/engineering
+	name = "Engineering Voidsuit Storage Unit"
+	SUIT_TYPE = /obj/item/clothing/suit/space/void/engineering
+	HELMET_TYPE = /obj/item/clothing/head/helmet/space/void/engineering
+	MASK_TYPE = /obj/item/clothing/mask/breath
+	req_access = list(access_engine)
+	islocked = 1
+
+/obj/machinery/suit_storage_unit/medical
+	name = "Medical Voidsuit Storage Unit"
+	SUIT_TYPE = /obj/item/clothing/suit/space/void/medical
+	HELMET_TYPE = /obj/item/clothing/head/helmet/space/void/medical
+	MASK_TYPE = /obj/item/clothing/mask/breath
+	req_access = list(access_medical)
+	islocked = 1
+
+/obj/machinery/suit_storage_unit/mining
+	name = "Mining Voidsuit Storage Unit"
+	SUIT_TYPE = /obj/item/clothing/suit/space/void/mining
+	HELMET_TYPE = /obj/item/clothing/head/helmet/space/void/mining
+	MASK_TYPE = /obj/item/clothing/mask/breath
+	req_access = list(access_mining)
+	islocked = 1
+
+/obj/machinery/suit_storage_unit/science
+	name = "Excavation Voidsuit Storage Unit"
+	SUIT_TYPE = /obj/item/clothing/suit/space/void/excavation
+	HELMET_TYPE = /obj/item/clothing/head/helmet/space/void/excavation
+	MASK_TYPE = /obj/item/clothing/mask/breath
+	req_access = list(access_xenoarch)
+	islocked = 1
+
+/obj/machinery/suit_storage_unit/security
+	name = "Security Voidsuit Storage Unit"
+	SUIT_TYPE = /obj/item/clothing/suit/space/void/security
+	HELMET_TYPE = /obj/item/clothing/head/helmet/space/void/security
+	MASK_TYPE = /obj/item/clothing/mask/breath
+	req_access = list(access_security)
+	islocked = 1
+
+/obj/machinery/suit_storage_unit/merc
+	name = "Nonstandard Voidsuit Storage Unit"
+	SUIT_TYPE = /obj/item/clothing/suit/space/void/merc
+	HELMET_TYPE = /obj/item/clothing/head/helmet/space/void/merc
+	MASK_TYPE = /obj/item/clothing/mask/breath
+	req_access = list(access_syndicate)
+	islocked = 1
+
 
 
 /obj/machinery/suit_storage_unit/New()
@@ -58,17 +117,18 @@
 
 
 /obj/machinery/suit_storage_unit/power_change()
-	..()
-	if( !(stat & NOPOWER) )
-		src.ispowered = 1
-		src.update_icon()
-	else
-		spawn(rand(0, 15))
-			src.ispowered = 0
-			src.islocked = 0
-			src.isopen = 1
-			src.dump_everything()
+	. = ..()
+	if(.)
+		if( !(stat & NOPOWER) )
+			src.ispowered = 1
 			src.update_icon()
+		else
+			spawn(rand(0, 15))
+				src.ispowered = 0
+				src.islocked = 0
+				src.isopen = 1
+				src.dump_everything()
+				src.update_icon()
 
 
 /obj/machinery/suit_storage_unit/ex_act(severity)
@@ -207,7 +267,7 @@
 	/*if(istype(H)) //Let's check if the guy's wearing electrically insulated gloves
 		if(H.gloves)
 			var/obj/item/clothing/gloves/G = H.gloves
-			if(istype(G,/obj/item/clothing/gloves/yellow))
+			if(istype(G,/obj/item/clothing/gloves/insulated))
 				protected = 1
 
 	if(!protected)
@@ -233,7 +293,7 @@
 	/*if(istype(H)) //Let's check if the guy's wearing electrically insulated gloves
 		if(H.gloves)
 			var/obj/item/clothing/gloves/G = H.gloves
-			if(istype(G,/obj/item/clothing/gloves/yellow) )
+			if(istype(G,/obj/item/clothing/gloves/insulated) )
 				protected = 1
 
 	if(!protected)
@@ -330,19 +390,17 @@
 	for(i=0,i<4,i++)
 		sleep(50)
 		if(src.OCCUPANT)
-			OCCUPANT.apply_effect(50, IRRADIATE)
-			var/obj/item/organ/diona/nutrients/rad_organ = locate() in OCCUPANT.internal_organs
+			OCCUPANT.apply_effect(50, IRRADIATE, blocked = OCCUPANT.getarmor(null, "rad"))
+			var/obj/item/organ/internal/diona/nutrients/rad_organ = locate() in OCCUPANT.internal_organs
 			if (!rad_organ)
+				if (OCCUPANT.can_feel_pain())
+					OCCUPANT.emote("scream")
 				if(src.issuperUV)
 					var/burndamage = rand(28,35)
 					OCCUPANT.take_organ_damage(0,burndamage)
-					if (!(OCCUPANT.species && (OCCUPANT.species.flags & NO_PAIN)))
-						OCCUPANT.emote("scream")
 				else
 					var/burndamage = rand(6,10)
 					OCCUPANT.take_organ_damage(0,burndamage)
-					if (!(OCCUPANT.species && (OCCUPANT.species.flags & NO_PAIN)))
-						OCCUPANT.emote("scream")
 		if(i==3) //End of the cycle
 			if(!src.issuperUV)
 				if(src.HELMET)
@@ -453,8 +511,8 @@
 	if ( (src.OCCUPANT) || (src.HELMET) || (src.SUIT) )
 		usr << "<font color='red'>It's too cluttered inside for you to fit in!</font>"
 		return
-	visible_message("[usr] starts squeezing into the suit storage unit!", 3)
-	if(do_after(usr, 10))
+	visible_message("\The [usr] starts squeezing into the suit storage unit!", 3)
+	if(do_after(usr, 10, src))
 		usr.stop_pulling()
 		usr.client.perspective = EYE_PERSPECTIVE
 		usr.client.eye = src
@@ -498,7 +556,7 @@
 			user << "<font color='red'>The unit's storage area is too cluttered.</font>"
 			return
 		visible_message("[user] starts putting [G.affecting.name] into the Suit Storage Unit.", 3)
-		if(do_after(user, 20))
+		if(do_after(user, 20, src))
 			if(!G || !G.affecting) return //derpcheck
 			var/mob/M = G.affecting
 			if (M.client)
@@ -593,9 +651,9 @@
 	var/electrified = 0
 
 	//Departments that the cycler can paint suits to look like.
-	var/list/departments = list("Engineering","Mining","Medical","Security","Atmos")
+	var/list/departments = list("Engineering","Mining","Medical","Security","Atmos","Science")
 	//Species that the suits can be configured to fit.
-	var/list/species = list("Human","Skrell","Unathi","Tajara")
+	var/list/species = list("Human","Skrell","Unathi","Tajara","Resomi")
 
 	var/target_department
 	var/target_species
@@ -624,35 +682,42 @@
 	model_text = "Engineering"
 	req_access = list(access_construction)
 	departments = list("Engineering","Atmos")
-	species = list("Human","Tajara","Skrell","Unathi") //Add Unathi when sprites exist for their suits.
+	species = list("Human","Tajara","Skrell","Unathi","Resomi") //Add Unathi when sprites exist for their suits.
 
 /obj/machinery/suit_cycler/mining
 	name = "Mining suit cycler"
 	model_text = "Mining"
 	req_access = list(access_mining)
 	departments = list("Mining")
-	species = list("Human","Tajara","Skrell","Unathi")
+	species = list("Human","Tajara","Skrell","Unathi","Resomi")
+
+/obj/machinery/suit_cycler/science
+	name = "Excavation suit cycler"
+	model_text = "Excavation"
+	req_access = list(access_xenoarch)
+	departments = list("Science")
+	species = list("Human","Tajara","Skrell","Unathi","Resomi")
 
 /obj/machinery/suit_cycler/security
 	name = "Security suit cycler"
 	model_text = "Security"
 	req_access = list(access_security)
 	departments = list("Security")
-	species = list("Human","Tajara","Skrell","Unathi")
+	species = list("Human","Tajara","Skrell","Unathi","Resomi")
 
 /obj/machinery/suit_cycler/medical
 	name = "Medical suit cycler"
 	model_text = "Medical"
 	req_access = list(access_medical)
 	departments = list("Medical")
-	species = list("Human","Tajara","Skrell","Unathi")
+	species = list("Human","Tajara","Skrell","Unathi","Resomi")
 
 /obj/machinery/suit_cycler/syndicate
 	name = "Nonstandard suit cycler"
 	model_text = "Nonstandard"
 	req_access = list(access_syndicate)
 	departments = list("Mercenary")
-	species = list("Human","Tajara","Skrell","Unathi")
+	species = list("Human","Tajara","Skrell","Unathi","Resomi")
 	can_repair = 1
 
 /obj/machinery/suit_cycler/attack_ai(mob/user as mob)
@@ -686,7 +751,7 @@
 
 		visible_message("<span class='notice'>[user] starts putting [G.affecting.name] into the suit cycler.</span>", 3)
 
-		if(do_after(user, 20))
+		if(do_after(user, 20, src))
 			if(!G || !G.affecting) return
 			var/mob/M = G.affecting
 			if (M.client)
@@ -922,7 +987,7 @@
 			occupant.take_organ_damage(0,radiation_level*2 + rand(1,3))
 		if(radiation_level > 1)
 			occupant.take_organ_damage(0,radiation_level + rand(1,3))
-		occupant.apply_effect(radiation_level*10, IRRADIATE)
+		occupant.apply_effect(radiation_level*10, IRRADIATE, blocked = occupant.getarmor(null, "rad"))
 
 /obj/machinery/suit_cycler/proc/finished_job()
 	var/turf/T = get_turf(src)
@@ -1001,6 +1066,15 @@
 				suit.name = "mining voidsuit"
 				suit.icon_state = "rig-mining"
 				suit.item_state = "mining_voidsuit"
+		if("Science")
+			if(helmet)
+				helmet.name = "excavation voidsuit helmet"
+				helmet.icon_state = "rig0-excavation"
+				helmet.item_state = "excavation_helm"
+			if(suit)
+				suit.name = "excavation voidsuit"
+				suit.icon_state = "rig-excavation"
+				suit.item_state = "excavation_voidsuit"
 		if("Medical")
 			if(helmet)
 				helmet.name = "medical voidsuit helmet"

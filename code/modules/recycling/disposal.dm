@@ -40,7 +40,7 @@
 			trunk.linked = src	// link the pipe trunk to self
 
 		air_contents = new/datum/gas_mixture(PRESSURE_TANK_VOLUME)
-		update()
+		update_icon()
 
 /obj/machinery/disposal/Destroy()
 	eject()
@@ -78,7 +78,7 @@
 				playsound(src.loc, 'sound/items/Welder2.ogg', 100, 1)
 				user << "You start slicing the floorweld off the disposal unit."
 
-				if(do_after(user,20))
+				if(do_after(user,20,src))
 					if(!src || !W.isOn()) return
 					user << "You sliced the floorweld off the disposal unit."
 					var/obj/structure/disposalconstruct/C = new (src.loc)
@@ -103,7 +103,7 @@
 		for(var/obj/item/O in T.contents)
 			T.remove_from_storage(O,src)
 		T.update_icon()
-		update()
+		update_icon()
 		return
 
 	var/obj/item/weapon/grab/G = I
@@ -112,17 +112,15 @@
 			var/mob/GM = G.affecting
 			for (var/mob/V in viewers(usr))
 				V.show_message("[usr] starts putting [GM.name] into the disposal.", 3)
-			if(do_after(usr, 20))
+			if(do_after(usr, 20, src))
 				if (GM.client)
 					GM.client.perspective = EYE_PERSPECTIVE
 					GM.client.eye = src
 				GM.forceMove(src)
 				for (var/mob/C in viewers(src))
-					C.show_message("\red [GM.name] has been placed in the [src] by [user].", 3)
+					C.show_message("<span class='warning'>[GM.name] has been placed in the [src] by [user].</span>", 3)
 				qdel(G)
-				usr.attack_log += text("\[[time_stamp()]\] <font color='red'>Has placed [GM.name] ([GM.ckey]) in disposals.</font>")
-				GM.attack_log += text("\[[time_stamp()]\] <font color='orange'>Has been placed in disposals by [usr.name] ([usr.ckey])</font>")
-				msg_admin_attack("[usr] ([usr.ckey]) placed [GM] ([GM.ckey]) in a disposals unit. (<A HREF='?_src_=holder;adminplayerobservecoodjump=1;X=[usr.x];Y=[usr.y];Z=[usr.z]'>JMP</a>)")
+				admin_attack_log(usr, GM, "Placed the victim into \the [src].", "Was placed into \the [src] by the attacker.", "stuffed \the [src] with")
 		return
 
 	if(isrobot(user))
@@ -140,7 +138,7 @@
 			continue
 		M.show_message("[user.name] places \the [I] into the [src].", 3)
 
-	update()
+	update_icon()
 
 // mouse drop another mob or self
 //
@@ -163,21 +161,18 @@
 		if(target != user && !user.restrained() && !user.stat && !user.weakened && !user.stunned && !user.paralysis)
 			if(target.anchored) return
 			V.show_message("[usr] starts stuffing [target.name] into the disposal.", 3)
-	if(!do_after(usr, 20))
+	if(!do_after(usr, 20, src))
 		return
 	if(target_loc != target.loc)
 		return
-	if(target == user && !user.stat && !user.weakened && !user.stunned && !user.paralysis)	// if drop self, then climbed in
+	if(target == user && !user.incapacitated(INCAPACITATION_ALL))	// if drop self, then climbed in
 											// must be awake, not stunned or whatever
-		msg = "[user.name] climbs into the [src]."
-		user << "You climb into the [src]."
-	else if(target != user && !user.restrained() && !user.stat && !user.weakened && !user.stunned && !user.paralysis)
-		msg = "[user.name] stuffs [target.name] into the [src]!"
-		user << "You stuff [target.name] into the [src]!"
-
-		user.attack_log += text("\[[time_stamp()]\] <font color='red'>Has placed [target.name] ([target.ckey]) in disposals.</font>")
-		target.attack_log += text("\[[time_stamp()]\] <font color='orange'>Has been placed in disposals by [user.name] ([user.ckey])</font>")
-		msg_admin_attack("[user] ([user.ckey]) placed [target] ([target.ckey]) in a disposals unit. (<A HREF='?_src_=holder;adminplayerobservecoodjump=1;X=[user.x];Y=[user.y];Z=[user.z]'>JMP</a>)")
+		msg = "\The [user] climbs into \the [src]."
+		user << "You climb into \the [src]."
+	else if(target != user && !user.incapacitated())
+		msg = "\The [user] stuffs \the [target] into \the [src]!"
+		user << "You stuff \the [target] into \the [src]!"
+		admin_attack_log(user, target, "Placed the victim into \the [src].", "Was placed into \the [src] by the attacker.", "stuffed \the [src] with")
 	else
 		return
 	if (target.client)
@@ -191,7 +186,7 @@
 			continue
 		C.show_message(msg, 3)
 
-	update()
+	update_icon()
 	return
 
 // attempt to move while inside
@@ -209,7 +204,7 @@
 		user.client.eye = user.client.mob
 		user.client.perspective = MOB_PERSPECTIVE
 	user.forceMove(src.loc)
-	update()
+	update_icon()
 	return
 
 // ai as human but can't flush
@@ -231,7 +226,7 @@
 		interact(user, 0)
 	else
 		flush = !flush
-		update()
+		update_icon()
 	return
 
 // user interaction
@@ -299,12 +294,12 @@
 				mode = 1
 			else
 				mode = 0
-			update()
+			update_icon()
 
 		if(!isAI(usr))
 			if(href_list["handle"])
 				flush = text2num(href_list["handle"])
-				update()
+				update_icon()
 
 			if(href_list["eject"])
 				eject()
@@ -319,13 +314,12 @@
 	for(var/atom/movable/AM in src)
 		AM.forceMove(src.loc)
 		AM.pipe_eject(0)
-	update()
+	update_icon()
 
 // update the icon & overlays to reflect mode & status
-/obj/machinery/disposal/proc/update()
+/obj/machinery/disposal/update_icon()
 	overlays.Cut()
 	if(stat & BROKEN)
-		icon_state = "disposal-broken"
 		mode = 0
 		flush = 0
 		return
@@ -373,7 +367,7 @@
 		update_use_power(1)
 	else if(air_contents.return_pressure() >= SEND_PRESSURE)
 		mode = 2 //if full enough, switch to ready mode
-		update()
+		update_icon()
 	else
 		src.pressurize() //otherwise charge
 
@@ -429,14 +423,14 @@
 	flush = 0
 	if(mode == 2)	// if was ready,
 		mode = 1	// switch to charging
-	update()
+	update_icon()
 	return
 
 
 // called when area power changes
 /obj/machinery/disposal/power_change()
 	..()	// do default setting/reset of stat NOPOWER bit
-	update()	// update icon
+	update_icon()	// update icon
 	return
 
 
@@ -1481,7 +1475,7 @@
 			if(W.remove_fuel(0,user))
 				playsound(src.loc, 'sound/items/Welder2.ogg', 100, 1)
 				user << "You start slicing the floorweld off the disposal outlet."
-				if(do_after(user,20))
+				if(do_after(user,20, src))
 					if(!src || !W.isOn()) return
 					user << "You sliced the floorweld off the disposal outlet."
 					var/obj/structure/disposalconstruct/C = new (src.loc)

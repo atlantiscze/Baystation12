@@ -1,6 +1,7 @@
 /obj/item/projectile/bullet
 	name = "bullet"
 	icon_state = "bullet"
+	fire_sound = 'sound/weapons/gunshot/gunshot_strong.ogg'
 	damage = 60
 	damage_type = BRUTE
 	nodamage = 0
@@ -21,7 +22,10 @@
 		mob_passthrough_check = 1
 	else
 		mob_passthrough_check = 0
-	return ..()
+	. = ..()
+
+	if(. == 1 && iscarbon(target_mob))
+		damage *= 0.7 //squishy mobs absorb KE
 
 /obj/item/projectile/bullet/can_embed()
 	//prevent embedding if the projectile is passing through the mob
@@ -38,11 +42,9 @@
 	if(ismob(A))
 		if(!mob_passthrough_check)
 			return 0
-		if(iscarbon(A))
-			damage *= 0.7 //squishy mobs absorb KE
 		return 1
 
-	var/chance = 0
+	var/chance = damage
 	if(istype(A, /turf/simulated/wall))
 		var/turf/simulated/wall/W = A
 		chance = round(damage/W.material.integrity*180)
@@ -52,8 +54,6 @@
 		if(D.glass) chance *= 2
 	else if(istype(A, /obj/structure/girder))
 		chance = 100
-	else if(istype(A, /obj/machinery) || istype(A, /obj/structure))
-		chance = damage
 
 	if(prob(chance))
 		if(A.opacity)
@@ -126,12 +126,17 @@
 /* short-casing projectiles, like the kind used in pistols or SMGs */
 
 /obj/item/projectile/bullet/pistol
+	fire_sound = 'sound/weapons/gunshot/gunshot_pistol.ogg'
 	damage = 20
 
 /obj/item/projectile/bullet/pistol/medium
 	damage = 25
 
+/obj/item/projectile/bullet/pistol/medium/smg
+	fire_sound = 'sound/weapons/gunshot/gunshot_smg.ogg'
+
 /obj/item/projectile/bullet/pistol/strong //revolvers and matebas
+	fire_sound = 'sound/weapons/gunshot/gunshot_strong.ogg'
 	damage = 60
 
 /obj/item/projectile/bullet/pistol/rubber //"rubber" bullets
@@ -146,6 +151,7 @@
 
 /obj/item/projectile/bullet/shotgun
 	name = "slug"
+	fire_sound = 'sound/weapons/gunshot/shotgun.ogg'
 	damage = 50
 	armor_penetration = 15
 
@@ -161,6 +167,7 @@
 //Overall less damage than slugs in exchange for more damage at very close range and more embedding
 /obj/item/projectile/bullet/pellet/shotgun
 	name = "shrapnel"
+	fire_sound = 'sound/weapons/gunshot/shotgun.ogg'
 	damage = 13
 	pellets = 6
 	range_step = 1
@@ -173,12 +180,16 @@
 	penetrating = 1
 
 /obj/item/projectile/bullet/rifle/a762
+	fire_sound = 'sound/weapons/gunshot/gunshot2.ogg'
 	damage = 25
 
 /obj/item/projectile/bullet/rifle/a556
-	damage = 35
+	fire_sound = 'sound/weapons/gunshot/gunshot3.ogg'
+	damage = 30
+	armor_penetration = 25
 
 /obj/item/projectile/bullet/rifle/a145
+	fire_sound = 'sound/weapons/gunshot/sniper.ogg'
 	damage = 80
 	stun = 3
 	weaken = 3
@@ -204,6 +215,9 @@
 	embed = 0
 	edge = 1
 
+/obj/item/projectile/bullet/gyro
+	fire_sound = 'sound/effects/Explosion1.ogg'
+
 /obj/item/projectile/bullet/gyro/on_hit(var/atom/target, var/blocked = 0)
 	if(isturf(target))
 		explosion(target, -1, 0, 2)
@@ -228,6 +242,8 @@
 
 /obj/item/projectile/bullet/pistol/cap
 	name = "cap"
+	invisibility = 101
+	fire_sound = null
 	damage_type = HALLOSS
 	damage = 0
 	nodamage = 1

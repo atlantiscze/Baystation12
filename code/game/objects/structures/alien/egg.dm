@@ -17,7 +17,7 @@
 	..()
 
 /obj/structure/alien/egg/CanUseTopic(var/mob/user)
-	return isobserver(user) ? STATUS_INTERACTIVE : STATUS_CLOSE
+	return isghost(user) ? STATUS_INTERACTIVE : STATUS_CLOSE
 
 /obj/structure/alien/egg/Topic(href, href_list)
 	if(..())
@@ -29,8 +29,8 @@
 /obj/structure/alien/egg/process()
 	progress++
 	if(progress >= MAX_PROGRESS)
-		for(var/mob/M in dead_mob_list)
-			if(istype(M,/mob/dead) && M.client && M.client.prefs && (M.client.prefs.be_special & BE_ALIEN))
+		for(var/mob/M in dead_mob_list_)
+			if(isghost(M) && M.client && M.client.prefs && (MODE_XENOMORPH in M.client.prefs.be_special_role))
 				M << "<span class='notice'>An alien is ready to hatch! ([ghost_follow_link(src, M)]) (<a href='byond://?src=\ref[src];spawn=1'>spawn</a>)</span>"
 		processing_objects -= src
 		update_icon()
@@ -43,7 +43,7 @@
 	else
 		icon_state = "egg"
 
-/obj/structure/alien/egg/attack_ghost(var/mob/dead/observer/user)
+/obj/structure/alien/egg/attack_ghost(var/mob/observer/ghost/user)
 	if(progress == -1) //Egg has been hatched.
 		return
 
@@ -55,7 +55,7 @@
 		return
 
 	// Check for bans properly.
-	if(jobban_isbanned(user, "Xenomorph"))
+	if(jobban_isbanned(user, MODE_XENOMORPH))
 		user << "<span class='danger'>You are banned from playing a Xenomorph.</span>"
 		return
 
@@ -83,6 +83,7 @@
 	// Create the mob, transfer over key.
 	var/mob/living/carbon/alien/larva/larva = new(get_turf(src))
 	larva.ckey = user.ckey
+	xenomorphs.add_antagonist(larva.mind, 1)
 	spawn(-1)
 		if(user) qdel(user) // Remove the keyless ghost if it exists.
 

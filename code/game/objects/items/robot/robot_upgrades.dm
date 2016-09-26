@@ -55,6 +55,23 @@
 
 	return 1
 
+/obj/item/borg/upgrade/floodlight
+	name = "robot floodlight module"
+	desc = "Used to boost cyborg's light intensity."
+	icon_state = "cyborg_upgrade1"
+
+/obj/item/borg/upgrade/floodlight/action(var/mob/living/silicon/robot/R)
+	if(..()) return 0
+
+	if(R.intenselight)
+		usr << "This cyborg's light was already upgraded"
+		return 0
+	else
+		R.intenselight = 1
+		R.update_robot_light()
+		R << "Lighting systems upgrade detected."
+	return 1
+
 /obj/item/borg/upgrade/restart
 	name = "robot emergency restart module"
 	desc = "Used to force a restart of a disabled-but-repaired robot, bringing it back online."
@@ -67,13 +84,12 @@
 		return 0
 
 	if(!R.key)
-		for(var/mob/dead/observer/ghost in player_list)
+		for(var/mob/observer/ghost/ghost in player_list)
 			if(ghost.mind && ghost.mind.current == R)
 				R.key = ghost.key
 
 	R.stat = CONSCIOUS
-	dead_mob_list -= R
-	living_mob_list |= R
+	R.switch_from_dead_to_living_mob_list()
 	R.notify_ai(ROBOT_NOTIFICATION_NEW_UNIT)
 	return 1
 
@@ -104,7 +120,7 @@
 /obj/item/borg/upgrade/tasercooler/action(var/mob/living/silicon/robot/R)
 	if(..()) return 0
 
-	if(!R.module || !(src in R.module.supported_upgrades))
+	if(!R.module || !(type in R.module.supported_upgrades))
 		R << "Upgrade mounting error!  No suitable hardpoint detected!"
 		usr << "There's no mounting point for the module!"
 		return 0
@@ -137,7 +153,7 @@
 /obj/item/borg/upgrade/jetpack/action(var/mob/living/silicon/robot/R)
 	if(..()) return 0
 
-	if(!R.module || !(src in R.module.supported_upgrades))
+	if(!R.module || !(type in R.module.supported_upgrades))
 		R << "Upgrade mounting error!  No suitable hardpoint detected!"
 		usr << "There's no mounting point for the module!"
 		return 0
@@ -148,10 +164,26 @@
 		//R.icon_state="Miner+j"
 		return 1
 
+/obj/item/borg/upgrade/rcd
+	name = "engineering robot RCD"
+	desc = "A rapid construction device module for use during construction operations."
+	icon_state = "cyborg_upgrade3"
+	require_module = 1
+
+/obj/item/borg/upgrade/rcd/action(var/mob/living/silicon/robot/R)
+	if(..()) return 0
+
+	if(!R.module || !(type in R.module.supported_upgrades))
+		R << "Upgrade mounting error!  No suitable hardpoint detected!"
+		usr << "There's no mounting point for the module!"
+		return 0
+	else
+		R.module.modules += new/obj/item/weapon/rcd/borg(R.module)
+		return 1
 
 /obj/item/borg/upgrade/syndicate/
 	name = "illegal equipment module"
-	desc = "Unlocks the hidden, deadlier functions of a robot"
+	desc = "Unlocks the hidden, deadlier functions of a robot."
 	icon_state = "cyborg_upgrade3"
 	require_module = 1
 

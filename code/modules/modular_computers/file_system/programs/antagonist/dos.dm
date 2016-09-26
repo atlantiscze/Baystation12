@@ -7,7 +7,7 @@
 	requires_ntnet = 1
 	available_on_ntnet = 0
 	available_on_syndinet = 1
-	nanomodule_path = /datum/nano_module/computer_dos/
+	nanomodule_path = /datum/nano_module/program/computer_dos/
 	var/obj/machinery/ntnet_relay/target = null
 	var/dos_speed = 0
 	var/error = ""
@@ -17,14 +17,14 @@
 	dos_speed = 0
 	switch(ntnet_status)
 		if(1)
-			dos_speed = NTNETSPEED_LOWSIGNAL * 10
+			dos_speed = NTNETSPEED_LOWSIGNAL * NTNETSPEED_DOS_AMPLIFICATION
 		if(2)
-			dos_speed = NTNETSPEED_HIGHSIGNAL * 10
+			dos_speed = NTNETSPEED_HIGHSIGNAL * NTNETSPEED_DOS_AMPLIFICATION
 		if(3)
-			dos_speed = NTNETSPEED_ETHERNET * 10
+			dos_speed = NTNETSPEED_ETHERNET * NTNETSPEED_DOS_AMPLIFICATION
 	if(target && executed)
 		target.dos_overload += dos_speed
-		if(target.is_operational())
+		if(!target.operable())
 			target.dos_sources.Remove(src)
 			target = null
 			error = "Connection to destination relay lost."
@@ -36,10 +36,10 @@
 
 	..(forced)
 
-/datum/nano_module/computer_dos
+/datum/nano_module/program/computer_dos
 	name = "DoS Traffic Generator"
 
-/datum/nano_module/computer_dos/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/datum/topic_state/state = default_state)
+/datum/nano_module/program/computer_dos/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/datum/topic_state/state = default_state)
 	if(!ntnet_global)
 		return
 	var/datum/computer_file/program/ntnet_dos/PRG = program
@@ -87,13 +87,14 @@
 		for(var/obj/machinery/ntnet_relay/R in ntnet_global.relays)
 			if("[R.uid]" == href_list["PRG_target_relay"])
 				target = R
-		return
+		return 1
 	if(href_list["PRG_reset"])
-		target.dos_sources.Remove(src)
-		target = null
+		if(target)
+			target.dos_sources.Remove(src)
+			target = null
 		executed = 0
 		error = ""
-		return
+		return 1
 	if(href_list["PRG_execute"])
 		if(target)
 			executed = 1
@@ -101,4 +102,4 @@
 			if(ntnet_global.intrusion_detection_enabled)
 				ntnet_global.add_log("IDS WARNING - Excess traffic flood targeting relay [target.uid] detected from device: [computer.network_card.get_network_tag()]")
 				ntnet_global.intrusion_detection_alarm = 1
-		return
+		return 1

@@ -1,28 +1,67 @@
 
-/*
-	The initialization of the game happens roughly like this:
+/var/game_id = null
+/hook/global_init/proc/generate_gameid()
+	if(game_id != null)
+		return
+	game_id = ""
 
-	1. All global variables are initialized (including the global_init instance).
-	2. The map is initialized, and map objects are created.
-	3. world/New() runs, creating the process scheduler (and the old master controller) and spawning their setup.
-	4. processScheduler/setup() runs, creating all the processes. game_controller/setup() runs, calling initialize() on all movable atoms in the world.
-	5. The gameticker is created.
+	var/list/c = list("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0")
+	var/l = c.len
 
-*/
-var/global/datum/global_init/init = new ()
+	var/t = world.timeofday
+	for(var/_ = 1 to 4)
+		game_id = "[c[(t % l) + 1]][game_id]"
+		t = round(t / l)
+	game_id = "-[game_id]"
+	t = round(world.realtime / (10 * 60 * 60 * 24))
+	for(var/_ = 1 to 3)
+		game_id = "[c[(t % l) + 1]][game_id]"
+		t = round(t / l)
+	return 1
 
-/*
-	Pre-map initialization stuff should go here.
-*/
-/datum/global_init/New()
+// Find mobs matching a given string
+//
+// search_string: the string to search for, in params format; for example, "some_key;mob_name"
+// restrict_type: A mob type to restrict the search to, or null to not restrict
+//
+// Partial matches will be found, but exact matches will be preferred by the search
+//
+// Returns: A possibly-empty list of the strongest matches
+/proc/text_find_mobs(search_string, restrict_type = null)
+	var/list/search = params2list(search_string)
+	var/list/ckeysearch = list()
+	for(var/text in search)
+		ckeysearch += ckey(text)
 
-	makeDatumRefLists()
-	load_configuration()
+	var/list/match = list()
 
-	initialize_chemical_reagents()
-	initialize_chemical_reactions()
+	for(var/mob/M in mob_list)
+		if(restrict_type && !istype(M, restrict_type))
+			continue
+		var/strings = list(M.name, M.ckey)
+		if(M.mind)
+			strings += M.mind.assigned_role
+			strings += M.mind.special_role
+		if(ishuman(M))
+			var/mob/living/carbon/human/H = M
+			if(H.species)
+				strings += H.species.name
+		for(var/text in strings)
+			if(ckey(text) in ckeysearch)
+				match[M] += 10 // an exact match is far better than a partial one
+			else
+				for(var/searchstr in search)
+					if(findtext(text, searchstr))
+						match[M] += 1
 
-	qdel(src) //we're done
+	var/maxstrength = 0
+	for(var/mob/M in match)
+		maxstrength = max(match[M], maxstrength)
+	for(var/mob/M in match)
+		if(match[M] < maxstrength)
+			match -= M
+
+	return match
 
 
 /world
@@ -33,14 +72,13 @@ var/global/datum/global_init/init = new ()
 	cache_lifespan = 0	//stops player uploaded stuff from being kept in the rsc past the current session
 
 
-
-#define RECOMMENDED_VERSION 501
+#define RECOMMENDED_VERSION 509
 /world/New()
 	//logs
 	var/date_string = time2text(world.realtime, "YYYY/MM-Month/DD-Day")
 	href_logfile = file("data/logs/[date_string] hrefs.htm")
 	diary = file("data/logs/[date_string].log")
-	diary << "[log_end]\n[log_end]\nStarting up. [time2text(world.timeofday, "hh:mm.ss")][log_end]\n---------------------[log_end]"
+	diary << "[log_end]\n[log_end]\nStarting up. (ID: [game_id]) [time2text(world.timeofday, "hh:mm.ss")][log_end]\n---------------------[log_end]"
 	changelog_hash = md5('html/changelog.html')					//used for telling if the changelog has changed recently
 
 	if(byond_version < RECOMMENDED_VERSION)
@@ -53,7 +91,9 @@ var/global/datum/global_init/init = new ()
 		config.server_name += " #[(world.port % 1000) / 100]"
 
 	if(config && config.log_runtime)
-		log = file("data/logs/runtime/[time2text(world.realtime,"YYYY-MM-DD-(hh-mm-ss)")]-runtime.log")
+		var/runtime_log = file("data/logs/runtime/[date_string]_[time2text(world.timeofday, "hh:mm")]_[game_id].log")
+		runtime_log << "Game [game_id] starting up at [time2text(world.timeofday, "hh:mm.ss")]"
+		log = runtime_log
 
 	callHook("startup")
 	//Emergency Fix
@@ -64,7 +104,14 @@ var/global/datum/global_init/init = new ()
 
 	. = ..()
 
+#ifndef UNIT_TEST
+
 	sleep_offline = 1
+
+#else
+	log_unit_test("Unit Tests Enabled.  This will destroy the world when testing is complete.")
+	load_unit_test_changes()
+#endif
 
 	// Set up roundstart seed list.
 	plant_controller = new()
@@ -72,20 +119,9 @@ var/global/datum/global_init/init = new ()
 	// This is kinda important. Set up details of what the hell things are made of.
 	populate_material_list()
 
-	if(config.generate_asteroid)
-		// These values determine the specific area that the map is applied to.
-		// If you do not use the official Baycode moonbase map, you will need to change them.
-		//Create the mining Z-level.
-		new /datum/random_map/automata/cave_system(null,1,1,5,255,255)
-		//new /datum/random_map/noise/volcanism(null,1,1,5,255,255) // Not done yet! Pretty, though.
-		// Create the mining ore distribution map.
-		new /datum/random_map/noise/ore(null, 1, 1, 5, 64, 64)
-		// Update all turfs to ensure everything looks good post-generation. Yes,
-		// it's brute-forcey, but frankly the alternative is a mine turf rewrite.
-		for(var/turf/simulated/mineral/M in world) // Ugh.
-			M.updateMineralOverlays()
-		for(var/turf/simulated/floor/asteroid/M in world) // Uuuuuugh.
-			M.updateMineralOverlays()
+	if(config.generate_map)
+		if(using_map.perform_map_generation())
+			using_map.refresh_mining_turfs()
 
 	// Create autolathe recipes, as above.
 	populate_lathe_recipes()
@@ -99,6 +135,11 @@ var/global/datum/global_init/init = new ()
 		processScheduler.deferSetupFor(/datum/controller/process/ticker)
 		processScheduler.setup()
 		master_controller.setup()
+#ifdef UNIT_TEST
+		initialize_unit_tests()
+#endif
+
+
 
 	spawn(3000)		//so we aren't adding to the round-start lag
 		if(config.ToRban)
@@ -131,7 +172,7 @@ var/world_topic_spam_protect_time = world.timeofday
 		var/input[] = params2list(T)
 		var/list/s = list()
 		s["version"] = game_version
-		s["mode"] = master_mode
+		s["mode"] = PUBLIC_GAME_MODE
 		s["respawn"] = config.abandon_allowed
 		s["enter"] = config.enter_allowed
 		s["vote"] = config.allow_vote_mode
@@ -140,8 +181,9 @@ var/world_topic_spam_protect_time = world.timeofday
 
 		// This is dumb, but spacestation13.com's banners break if player count isn't the 8th field of the reply, so... this has to go here.
 		s["players"] = 0
-		s["stationtime"] = worldtime2text()
-		s["roundduration"] = round_duration()
+		s["stationtime"] = stationtime2text()
+		s["roundduration"] = roundduration2text()
+		s["map"] = using_map.full_name
 
 		if(input["status"] == "2")
 			var/list/players = list()
@@ -149,7 +191,7 @@ var/world_topic_spam_protect_time = world.timeofday
 
 			for(var/client/C in clients)
 				if(C.holder)
-					if(C.holder.fakekey)
+					if(C.is_stealthed())
 						continue
 					admins[C.key] = C.holder.rank
 				players += C.key
@@ -164,7 +206,7 @@ var/world_topic_spam_protect_time = world.timeofday
 
 			for(var/client/C in clients)
 				if(C.holder)
-					if(C.holder.fakekey)
+					if(C.is_stealthed())
 						continue	//so stealthmins aren't revealed by the hub
 					admins++
 				s["player[n]"] = C.key
@@ -176,34 +218,16 @@ var/world_topic_spam_protect_time = world.timeofday
 		return list2params(s)
 
 	else if(T == "manifest")
+		data_core.get_manifest_list()
 		var/list/positions = list()
-		var/list/set_names = list(
-				"heads" = command_positions,
-				"sec" = security_positions,
-				"eng" = engineering_positions,
-				"med" = medical_positions,
-				"sci" = science_positions,
-				"car" = cargo_positions,
-				"civ" = civilian_positions,
-				"bot" = nonhuman_positions
-			)
 
-		for(var/datum/data/record/t in data_core.general)
-			var/name = t.fields["name"]
-			var/rank = t.fields["rank"]
-			var/real_rank = make_list_rank(t.fields["real_rank"])
-
-			var/department = 0
-			for(var/k in set_names)
-				if(real_rank in set_names[k])
-					if(!positions[k])
-						positions[k] = list()
-					positions[k][name] = rank
-					department = 1
-			if(!department)
-				if(!positions["misc"])
-					positions["misc"] = list()
-				positions["misc"][name] = rank
+		// We rebuild the list in the format external tools expect
+		for(var/dept in PDA_Manifest)
+			var/list/dept_list = PDA_Manifest[dept]
+			if(dept_list.len > 0)
+				positions[dept] = list()
+				for(var/list/person in dept_list)
+					positions[dept][person["name"]] = person["rank"]
 
 		for(var/k in positions)
 			positions[k] = list2params(positions[k]) // converts positions["heads"] = list("Bob"="Captain", "Bill"="CMO") into positions["heads"] = "Bob=Captain&Bill=CMO"
@@ -211,10 +235,69 @@ var/world_topic_spam_protect_time = world.timeofday
 		return list2params(positions)
 
 	else if(T == "revision")
+		var/list/L = list()
+		L["gameid"] = game_id
+		L["dm_version"] = DM_VERSION // DreamMaker version compiled in
+		L["dd_version"] = world.byond_version // DreamDaemon version running on
+
 		if(revdata.revision)
-			return list2params(list(branch = revdata.branch, date = revdata.date, revision = revdata.revision))
+			L["revision"] = revdata.revision
+			L["branch"] = revdata.branch
+			L["date"] = revdata.date
 		else
-			return "unknown"
+			L["revision"] = "unknown"
+
+		return list2params(L)
+
+	else if(copytext(T,1,5) == "laws")
+		var/input[] = params2list(T)
+		if(input["key"] != config.comms_password)
+			if(world_topic_spam_protect_ip == addr && abs(world_topic_spam_protect_time - world.time) < 50)
+
+				spawn(50)
+					world_topic_spam_protect_time = world.time
+					return "Bad Key (Throttled)"
+
+			world_topic_spam_protect_time = world.time
+			world_topic_spam_protect_ip = addr
+
+			return "Bad Key"
+
+		var/list/match = text_find_mobs(input["laws"], /mob/living/silicon)
+
+		if(!match.len)
+			return "No matches"
+		else if(match.len == 1)
+			var/mob/living/silicon/S = match[1]
+			var/info = list()
+			info["name"] = S.name
+			info["key"] = S.key
+
+			if(!S.laws)
+				info["laws"] = null
+				return list2params(info)
+
+			var/list/lawset_parts = list(
+				"ion" = S.laws.ion_laws,
+				"inherent" = S.laws.inherent_laws,
+				"supplied" = S.laws.supplied_laws
+			)
+
+			for(var/law_type in lawset_parts)
+				var/laws = list()
+				for(var/datum/ai_law/L in lawset_parts[law_type])
+					laws += L.law
+				info[law_type] = list2params(laws)
+
+			info["zero"] = S.laws.zeroth_law ? S.laws.zeroth_law.law : null
+
+			return list2params(info)
+
+		else
+			var/list/ret = list()
+			for(var/mob/M in match)
+				ret[M.key] = M.name
+			return list2params(ret)
 
 	else if(copytext(T,1,5) == "info")
 		var/input[] = params2list(T)
@@ -230,32 +313,7 @@ var/world_topic_spam_protect_time = world.timeofday
 
 			return "Bad Key"
 
-		var/list/search = params2list(input["info"])
-		var/list/ckeysearch = list()
-		for(var/text in search)
-			ckeysearch += ckey(text)
-
-		var/list/match = list()
-
-		for(var/mob/M in mob_list)
-			var/strings = list(M.name, M.ckey)
-			if(M.mind)
-				strings += M.mind.assigned_role
-				strings += M.mind.special_role
-			for(var/text in strings)
-				if(ckey(text) in ckeysearch)
-					match[M] += 10 // an exact match is far better than a partial one
-				else
-					for(var/searchstr in search)
-						if(findtext(text, searchstr))
-							match[M] += 1
-
-		var/maxstrength = 0
-		for(var/mob/M in match)
-			maxstrength = max(match[M], maxstrength)
-		for(var/mob/M in match)
-			if(match[M] < maxstrength)
-				match -= M
+		var/list/match = text_find_mobs(input["info"])
 
 		if(!match.len)
 			return "No matches"
@@ -283,8 +341,14 @@ var/world_topic_spam_protect_time = world.timeofday
 							clone = L.getCloneLoss(),
 							brain = L.getBrainLoss()
 						))
+				if(ishuman(M))
+					var/mob/living/carbon/human/H = M
+					info["species"] = H.species.name
+				else
+					info["species"] = "non-human"
 			else
 				info["damage"] = "non-living"
+				info["species"] = "non-human"
 			info["gender"] = M.gender
 			return list2params(info)
 		else
@@ -397,17 +461,29 @@ var/world_topic_spam_protect_time = world.timeofday
 
 	processScheduler.stop()
 
-	for(var/client/C in clients)
-		if(config.server)	//if you set a server location in config.txt, it sends you there instead of trying to reconnect to the same world address. -- NeoFite
+	if(config.server)	//if you set a server location in config.txt, it sends you there instead of trying to reconnect to the same world address. -- NeoFite
+		for(var/client/C in clients)
 			C << link("byond://[config.server]")
 
+	if(config.wait_for_sigusr1_reboot && reason != 3)
+		text2file("foo", "reboot_called")
+		world << "<span class=danger>World reboot waiting for external scripts. Please be patient.</span>"
+		return
+
 	..(reason)
+
+/world/Del()
+	callHook("shutdown")
+	return ..()
 
 /hook/startup/proc/loadMode()
 	world.load_mode()
 	return 1
 
 /world/proc/load_mode()
+	if(!fexists("data/mode.txt"))
+		return
+
 	var/list/Lines = file2list("data/mode.txt")
 	if(Lines.len)
 		if(Lines[1])
@@ -446,7 +522,7 @@ var/world_topic_spam_protect_time = world.timeofday
 		if (!text)
 			error("Failed to load config/mods.txt")
 		else
-			var/list/lines = text2list(text, "\n")
+			var/list/lines = splittext(text, "\n")
 			for(var/line in lines)
 				if (!line)
 					continue
@@ -467,7 +543,7 @@ var/world_topic_spam_protect_time = world.timeofday
 		if (!text)
 			error("Failed to load config/mentors.txt")
 		else
-			var/list/lines = text2list(text, "\n")
+			var/list/lines = splittext(text, "\n")
 			for(var/line in lines)
 				if (!line)
 					continue
@@ -529,7 +605,7 @@ var/world_topic_spam_protect_time = world.timeofday
 		features += "hosted by <b>[config.hostedby]</b>"
 
 	if (features)
-		s += ": [list2text(features, ", ")]"
+		s += ": [jointext(features, ", ")]"
 
 	/* does this help? I do not know */
 	if (src.status != s)

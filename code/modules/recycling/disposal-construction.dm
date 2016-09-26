@@ -9,7 +9,6 @@
 	icon_state = "conpipe-s"
 	anchored = 0
 	density = 0
-	pressure_resistance = 5*ONE_ATMOSPHERE
 	matter = list(DEFAULT_WALL_MATERIAL = 1850)
 	level = 2
 	var/sortType = ""
@@ -272,7 +271,7 @@
 				if(W.remove_fuel(0,user))
 					playsound(src.loc, 'sound/items/Welder2.ogg', 100, 1)
 					user << "Welding the [nicetype] in place."
-					if(do_after(user, 20))
+					if(do_after(user, 20, src))
 						if(!src || !W.isOn()) return
 						user << "The [nicetype] has been welded in place!"
 						update() // TODO: Make this neat

@@ -64,8 +64,9 @@ var/global/list/obj/item/device/pda/PDAs = list()
 	var/obj/item/device/paicard/pai = null	// A slot for a personal AI device
 
 /obj/item/device/pda/examine(mob/user)
-	if(..(user, 1))
-		user << "The time [worldtime2text()] is displayed in the corner of the screen."
+	. = ..(user, 1)
+	if(.)
+		user << "The time [stationtime2text()] is displayed in the corner of the screen."
 
 /obj/item/device/pda/medical
 	default_cartridge = /obj/item/weapon/cartridge/medical
@@ -167,6 +168,12 @@ var/global/list/obj/item/device/pda/PDAs = list()
 	default_cartridge = /obj/item/weapon/cartridge/syndicate
 	icon_state = "pda-syn"
 	name = "Military PDA"
+	owner = "John Doe"
+	hidden = 1
+
+/obj/item/device/pda/ninja
+	icon_state = "pda-syn"
+	name = "Stealth PDA"
 	owner = "John Doe"
 	hidden = 1
 
@@ -337,7 +344,7 @@ var/global/list/obj/item/device/pda/PDAs = list()
 	else
 		return ..()
 
-/obj/item/device/pda/GetID()
+/obj/item/device/pda/GetIdCard()
 	return id
 
 /obj/item/device/pda/MouseDrop(obj/over_object as obj, src_location, over_location)
@@ -417,7 +424,7 @@ var/global/list/obj/item/device/pda/PDAs = list()
 			cartdata["charges"] = cartridge.charges ? cartridge.charges : 0
 		data["cartridge"] = cartdata
 
-	data["stationTime"] = worldtime2text()
+	data["stationTime"] = stationtime2text()
 	data["new_Message"] = new_message
 	data["new_News"] = new_news
 
@@ -455,7 +462,7 @@ var/global/list/obj/item/device/pda/PDAs = list()
 				data["convo_job"] = sanitize(c["job"])
 				break
 	if(mode==41)
-		data_core.get_manifest_json()
+		data_core.get_manifest_list()
 
 
 	if(mode==3)
@@ -514,9 +521,9 @@ var/global/list/obj/item/device/pda/PDAs = list()
 			if(!FC.censored)
 				var/index = 0
 				for(var/datum/feed_message/FM in FC.messages)
-					index++
+					++index
 					if(FM.img)
-						usr << browse_rsc(FM.img, "pda_news_tmp_photo_[feed["channel"]]_[index].png")
+						send_asset(usr.client, "newscaster_photo_[sanitize(FC.channel_name)]_[index].png")
 					// News stories are HTML-stripped but require newline replacement to be properly displayed in NanoUI
 					var/body = replacetext(FM.body, "\n", "<br>")
 					messages[++messages.len] = list("author" = FM.author, "body" = body, "message_type" = FM.message_type, "time_stamp" = FM.time_stamp, "has_image" = (FM.img != null), "caption" = FM.caption, "index" = index)
@@ -524,7 +531,7 @@ var/global/list/obj/item/device/pda/PDAs = list()
 
 		data["feed"] = feed
 
-	data["manifest"] = list("__json_cache" = ManifestJSON)
+	data["manifest"] = PDA_Manifest
 
 	nanoUI = data
 	// update the ui if it exists, returns null if no ui is passed/found
@@ -545,6 +552,8 @@ var/global/list/obj/item/device/pda/PDAs = list()
 
 //NOTE: graphic resources are loaded on client login
 /obj/item/device/pda/attack_self(mob/user as mob)
+	var/datum/asset/assets = get_asset_datum(/datum/asset/simple/pda)
+	assets.send(user)
 
 	user.set_machine(src)
 
@@ -603,9 +612,7 @@ var/global/list/obj/item/device/pda/PDAs = list()
 		if ("Authenticate")//Checks for ID
 			id_check(U, 1)
 		if("UpdateInfo")
-			ownjob = id.assignment
-			ownrank = id.rank
-			name = "PDA-[owner] ([ownjob])"
+			set_rank_job(id.rank, ownjob)
 		if("Eject")//Ejects the cart, only done from hub.
 			verb_remove_cartridge()
 
@@ -911,11 +918,11 @@ var/global/list/obj/item/device/pda/PDAs = list()
 		message += "Large clouds of noxious smoke billow forth from your [P]!"
 	if(i>=65 && i<=75) //Weaken
 		if(M && isliving(M))
-			M.apply_effects(0,1)
+			M.apply_effects(weaken = 1)
 		message += "Your [P] flashes with a blinding white light! You feel weaker."
 	if(i>=75 && i<=85) //Stun and stutter
 		if(M && isliving(M))
-			M.apply_effects(1,0,0,0,1)
+			M.apply_effects(stun = 1, stutter = 1)
 		message += "Your [P] flashes with a blinding white light! You feel weaker."
 	if(i>=85) //Sparks
 		var/datum/effect/effect/system/spark_spread/s = new /datum/effect/effect/system/spark_spread
@@ -984,7 +991,7 @@ var/global/list/obj/item/device/pda/PDAs = list()
 		tnote.Add(list(list("sent" = 1, "owner" = "[P.owner]", "job" = "[P.ownjob]", "message" = "[t]", "target" = "\ref[P]")))
 		P.tnote.Add(list(list("sent" = 0, "owner" = "[owner]", "job" = "[ownjob]", "message" = "[t]", "target" = "\ref[src]")))
 		for(var/mob/M in player_list)
-			if(M.stat == DEAD && M.client && (M.client.prefs.toggles & CHAT_GHOSTEARS)) // src.client is so that ghosts don't have to listen to mice
+			if(M.stat == DEAD && M.is_preference_enabled(/datum/client_preference/ghost_ears)) // src.client is so that ghosts don't have to listen to mice
 				if(istype(M, /mob/new_player))
 					continue
 				M.show_message("<span class='game say'>PDA Message - <span class='name'>[owner]</span> -> <span class='name'>[P.owner]</span>: <span class='message'>[t]</span></span>")
@@ -1086,7 +1093,7 @@ var/global/list/obj/item/device/pda/PDAs = list()
 		if(id)
 			remove_id()
 		else
-			usr << "<span class='notice'>This PDA does not have an ID in it.</span>"
+			usr << "<span class='notice'>\The [src] does not have an ID in it.</span>"
 	else
 		usr << "<span class='notice'>You cannot do this while restrained.</span>"
 
@@ -1110,7 +1117,7 @@ var/global/list/obj/item/device/pda/PDAs = list()
 					return
 			O.loc = get_turf(src)
 		else
-			usr << "<span class='notice'>This PDA does not have a pen in it.</span>"
+			usr << "<span class='notice'>\The [src] does not have a pen in it.</span>"
 	else
 		usr << "<span class='notice'>You cannot do this while restrained.</span>"
 
@@ -1122,7 +1129,11 @@ var/global/list/obj/item/device/pda/PDAs = list()
 	if(issilicon(usr))
 		return
 
-	if (can_use(usr) && !isnull(cartridge))
+	if(isnull(cartridge))
+		usr << "<span class='notice'>\The [src] does not have a cartridge in it.</span>"
+		return
+
+	if (can_use(usr))
 		var/turf/T = get_turf(src)
 		cartridge.loc = T
 		if (ismob(loc))
@@ -1134,8 +1145,8 @@ var/global/list/obj/item/device/pda/PDAs = list()
 		scanmode = 0
 		if (cartridge.radio)
 			cartridge.radio.hostpda = null
-		cartridge = null
 		usr << "<span class='notice'>You remove \the [cartridge] from the [name].</span>"
+		cartridge = null
 	else
 		usr << "<span class='notice'>You cannot do this while restrained.</span>"
 
@@ -1178,9 +1189,7 @@ var/global/list/obj/item/device/pda/PDAs = list()
 			user << "<span class='notice'>\The [src] rejects the ID.</span>"
 			return
 		if(!owner)
-			owner = idcard.registered_name
-			ownjob = idcard.assignment
-			ownrank = idcard.rank
+			set_owner_rank_job(idcard.registered_name, idcard.rank, idcard.assignment)
 			name = "PDA-[owner] ([ownjob])"
 			user << "<span class='notice'>Card scanned.</span>"
 		else
@@ -1237,10 +1246,6 @@ var/global/list/obj/item/device/pda/PDAs = list()
 									capitalize(org.name), (org.brute_dam > 0) ? "warning" : "notice", org.brute_dam, (org.burn_dam > 0) ? "warning" : "notice", org.burn_dam),1)
 					else
 						user.show_message("<span class='notice'>    Limbs are OK.</span>",1)
-
-				for(var/datum/disease/D in C.viruses)
-					if(!D.hidden[SCANNER])
-						user.show_message("<span class='warning'><b>Warning: [D.form] Detected</b>\nName: [D.name].\nType: [D.spread].\nStage: [D.stage]/[D.max_stages].\nPossible Cure: [D.cure]</span>")
 
 			if(2)
 				if (!istype(C:dna, /datum/dna))
@@ -1418,3 +1423,19 @@ var/global/list/obj/item/device/pda/PDAs = list()
 /obj/item/device/pda/emp_act(severity)
 	for(var/atom/A in src)
 		A.emp_act(severity)
+
+/obj/item/device/pda/proc/set_owner(var/owner)
+	src.owner = owner
+	update_label()
+
+/obj/item/device/pda/proc/set_rank_job(var/owner, var/rank, var/job)
+	ownrank = rank
+	ownjob = job ? job : rank
+	update_label()
+
+/obj/item/device/pda/proc/set_owner_rank_job(var/owner, var/rank, var/job)
+	set_owner(owner)
+	set_rank_job(rank, job)
+
+/obj/item/device/pda/proc/update_label()
+	name = "PDA-[owner] ([ownjob])"

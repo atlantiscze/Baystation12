@@ -26,14 +26,14 @@
 			return
 		var/mob/L = A
 		user.visible_message("<span class='notice'>[user] scoops [L] into \the [src].</span>", "<span class='notice'>You scoop [L] into \the [src].</span>")
-		L.loc = src
+		L.forceMove(src)
 		contains = 2
 		update_icon()
 		return
 	else if(istype(A, /obj/effect/spider/spiderling))
 		var/obj/effect/spider/spiderling/S = A
 		user.visible_message("<span class='notice'>[user] scoops [S] into \the [src].</span>", "<span class='notice'>You scoop [S] into \the [src].</span>")
-		S.loc = src
+		S.forceMove(src)
 		processing_objects.Remove(S) // No growing inside jars
 		contains = 3
 		update_icon()
@@ -73,7 +73,7 @@
 		var/obj/item/weapon/spacecash/S = W
 		user.visible_message("<span class='notice'>[user] puts [S.worth] [S.worth > 1 ? "thalers" : "thaler"] into \the [src].</span>")
 		user.drop_from_inventory(S)
-		S.loc = src
+		S.forceMove(src)
 		update_icon()
 
 /obj/item/glass_jar/update_icon() // Also updates name and desc
@@ -87,11 +87,13 @@
 			name = "tip jar"
 			desc = "A small jar with money inside."
 			for(var/obj/item/weapon/spacecash/S in src)
-				var/image/money = image(S.icon, S.icon_state)
-				money.pixel_x = rand(-2, 3)
-				money.pixel_y = rand(-6, 6)
-				money.transform *= 0.6
-				underlays += money
+				var/list/moneyImages = S.getMoneyImages()
+				for(var/A in moneyImages)
+					var/image/money = image('icons/obj/items.dmi', A)
+					money.pixel_x = rand(-2, 3)
+					money.pixel_y = rand(-6, 6)
+					money.transform *= 0.6
+					underlays += money
 		if(2)
 			for(var/mob/M in src)
 				var/image/victim = image(M.icon, M.icon_state)

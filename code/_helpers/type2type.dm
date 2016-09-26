@@ -50,141 +50,16 @@
 	while (left-- > 0)
 		. = "0[.]"
 
-// Concatenates a list of strings into a single string.  A seperator may optionally be provided.
-/proc/list2text(list/ls, sep)
-	if (ls.len <= 1) // Early-out code for empty or singleton lists.
-		return ls.len ? ls[1] : ""
-
-	var/l = ls.len // Made local for sanic speed.
-	var/i = 0      // Incremented every time a list index is accessed.
-
-	if (sep <> null)
-		// Macros expand to long argument lists like so: sep, ls[++i], sep, ls[++i], sep, ls[++i], etc...
-		#define S1  sep, ls[++i]
-		#define S4  S1,  S1,  S1,  S1
-		#define S16 S4,  S4,  S4,  S4
-		#define S64 S16, S16, S16, S16
-
-		. = "[ls[++i]]" // Make sure the initial element is converted to text.
-
-		// Having the small concatenations come before the large ones boosted speed by an average of at least 5%.
-		if (l-1 & 0x01) // 'i' will always be 1 here.
-			. = text("[][][]", ., S1) // Append 1 element if the remaining elements are not a multiple of 2.
-		if (l-i & 0x02)
-			. = text("[][][][][]", ., S1, S1) // Append 2 elements if the remaining elements are not a multiple of 4.
-		if (l-i & 0x04)
-			. = text("[][][][][][][][][]", ., S4) // And so on....
-		if (l-i & 0x08)
-			. = text("[][][][][][][][][][][][][][][][][]", ., S4, S4)
-		if (l-i & 0x10)
-			. = text("[][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][]", ., S16)
-		if (l-i & 0x20)
-			. = text("[][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][]\
-			          [][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][]", ., S16, S16)
-		if (l-i & 0x40)
-			. = text("[][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][]\
-			          [][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][]\
-			          [][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][]\
-			          [][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][]", ., S64)
-		while (l > i) // Chomp through the rest of the list, 128 elements at a time.
-			. = text("[][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][]\
-			          [][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][]\
-			          [][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][]\
-			          [][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][]\
-			          [][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][]\
-			          [][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][]\
-			          [][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][]\
-			          [][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][]", ., S64, S64)
-
-		#undef S64
-		#undef S16
-		#undef S4
-		#undef S1
-	else
-		// Macros expand to long argument lists like so: ls[++i], ls[++i], ls[++i], etc...
-		#define S1  ls[++i]
-		#define S4  S1,  S1,  S1,  S1
-		#define S16 S4,  S4,  S4,  S4
-		#define S64 S16, S16, S16, S16
-
-		. = "[ls[++i]]" // Make sure the initial element is converted to text.
-
-		if (l-1 & 0x01) // 'i' will always be 1 here.
-			. += S1 // Append 1 element if the remaining elements are not a multiple of 2.
-		if (l-i & 0x02)
-			. = text("[][][]", ., S1, S1) // Append 2 elements if the remaining elements are not a multiple of 4.
-		if (l-i & 0x04)
-			. = text("[][][][][]", ., S4) // And so on...
-		if (l-i & 0x08)
-			. = text("[][][][][][][][][]", ., S4, S4)
-		if (l-i & 0x10)
-			. = text("[][][][][][][][][][][][][][][][][]", ., S16)
-		if (l-i & 0x20)
-			. = text("[][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][]", ., S16, S16)
-		if (l-i & 0x40)
-			. = text("[][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][]\
-			          [][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][]", ., S64)
-		while (l > i) // Chomp through the rest of the list, 128 elements at a time.
-			. = text("[][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][]\
-			          [][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][]\
-			          [][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][]\
-			          [][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][]", ., S64, S64)
-
-		#undef S64
-		#undef S16
-		#undef S4
-		#undef S1
-
-// Slower then list2text, but correctly processes associative lists.
-proc/tg_list2text(list/list, glue=",")
-	if (!istype(list) || !list.len)
-		return
-	var/output
-	for(var/i=1 to list.len)
-		output += (i!=1? glue : null)+(!isnull(list["[list[i]]"])?"[list["[list[i]]"]]":"[list[i]]")
-	return output
-
-// Converts a string into a list by splitting the string at each delimiter found. (discarding the seperator)
-/proc/text2list(text, delimiter="\n")
-	var/delim_len = length(delimiter)
-	if (delim_len < 1)
-		return list(text)
-
-	. = list()
-	var/last_found = 1
-	var/found
-
-	do
-		found       = findtext(text, delimiter, last_found, 0)
-		.          += copytext(text, last_found, found)
-		last_found  = found + delim_len
-	while (found)
-
-// Case sensitive version of /proc/text2list().
-/proc/text2listEx(text, delimiter="\n")
-	var/delim_len = length(delimiter)
-	if (delim_len < 1)
-		return list(text)
-
-	. = list()
-	var/last_found = 1
-	var/found
-
-	do
-		found       = findtextEx(text, delimiter, last_found, 0)
-		.          += copytext(text, last_found, found)
-		last_found  = found + delim_len
-	while (found)
 
 /proc/text2numlist(text, delimiter="\n")
 	var/list/num_list = list()
-	for(var/x in text2list(text, delimiter))
+	for(var/x in splittext(text, delimiter))
 		num_list += text2num(x)
 	return num_list
 
 // Splits the text of a file at seperator and returns them in a list.
 /proc/file2list(filename, seperator="\n")
-	return text2list(return_file_text(filename),seperator)
+	return splittext(return_file_text(filename),seperator)
 
 // Turns a direction into text
 /proc/num2dir(direction)
@@ -199,14 +74,14 @@ proc/tg_list2text(list/list, glue=",")
 // Turns a direction into text
 /proc/dir2text(direction)
 	switch (direction)
-		if (1.0)  return "north"
-		if (2.0)  return "south"
-		if (4.0)  return "east"
-		if (8.0)  return "west"
-		if (5.0)  return "northeast"
-		if (6.0)  return "southeast"
-		if (9.0)  return "northwest"
-		if (10.0) return "southwest"
+		if (NORTH)     return "north"
+		if (SOUTH)     return "south"
+		if (EAST)      return "east"
+		if (WEST)      return "west"
+		if (NORTHEAST) return "northeast"
+		if (SOUTHEAST) return "southeast"
+		if (NORTHWEST) return "northwest"
+		if (SOUTHWEST) return "southwest"
 
 // Turns text into proper directions
 /proc/text2dir(direction)
@@ -346,3 +221,10 @@ proc/tg_list2text(list/list, glue=",")
 
 /proc/isLeap(y)
 	return ((y) % 4 == 0 && ((y) % 100 != 0 || (y) % 400 == 0))
+
+/proc/atomtype2nameassoclist(var/atom_type)
+	. = list()
+	for(var/sub_atom_type in typesof(atom_type))
+		var/atom/A = sub_atom_type
+		.[initial(A.name)] = sub_atom_type
+	. = sortAssoc(.)

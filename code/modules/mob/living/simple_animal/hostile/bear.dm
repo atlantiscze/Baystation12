@@ -112,9 +112,6 @@
 		target_mob = M
 	..()
 
-/mob/living/simple_animal/hostile/bear/Process_Spacemove(var/check_drift = 0)
-	return	//No drifting in space for space bears!
-
 /mob/living/simple_animal/hostile/bear/FindTarget()
 	. = ..()
 	if(.)
@@ -133,7 +130,7 @@
 
 	if(ishuman(target_mob))
 		var/mob/living/carbon/human/H = target_mob
-		var/dam_zone = pick("chest", "l_hand", "r_hand", "l_leg", "r_leg")
+		var/dam_zone = pick(BP_CHEST, BP_L_HAND, BP_R_HAND, BP_L_LEG, BP_R_LEG)
 		var/obj/item/organ/external/affecting = H.get_organ(ran_zone(dam_zone))
 		H.apply_damage(damage, BRUTE, affecting, H.run_armor_check(affecting, "melee"), sharp=1, edge=1)
 		return H

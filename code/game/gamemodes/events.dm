@@ -106,88 +106,22 @@ var/eventchance = 10 // Percent chance per 5 minutes.
 var/hadevent    = 0
 
 /proc/appendicitis()
-	for(var/mob/living/carbon/human/H in living_mob_list)
-		var/foundAlready = 0 // don't infect someone that already has the virus
-		for(var/datum/disease/D in H.viruses)
-			foundAlready = 1
-		if(H.stat == 2 || foundAlready)
-			continue
-
-		var/datum/disease/D = new /datum/disease/appendicitis
-		D.holder = H
-		D.affected_mob = H
-		H.viruses += D
-		break
-
-/proc/viral_outbreak(var/virus = null)
-//	command_alert("Confirmed outbreak of level 7 viral biohazard aboard [station_name()]. All personnel must contain the outbreak.", "Biohazard Alert")
-//	world << sound('sound/AI/outbreak7.ogg')
-	var/virus_type
-	if(!virus)
-		virus_type = pick(/datum/disease/dnaspread,/datum/disease/advance/flu,/datum/disease/advance/cold,/datum/disease/brainrot,/datum/disease/magnitis,/datum/disease/pierrot_throat)
-	else
-		switch(virus)
-			if("fake gbs")
-				virus_type = /datum/disease/fake_gbs
-			if("gbs")
-				virus_type = /datum/disease/gbs
-			if("magnitis")
-				virus_type = /datum/disease/magnitis
-			if("rhumba beat")
-				virus_type = /datum/disease/rhumba_beat
-			if("brain rot")
-				virus_type = /datum/disease/brainrot
-			if("cold")
-				virus_type = /datum/disease/advance/cold
-			if("retrovirus")
-				virus_type = /datum/disease/dnaspread
-			if("flu")
-				virus_type = /datum/disease/advance/flu
-//			if("t-virus")
-//				virus_type = /datum/disease/t_virus
-			if("pierrot's throat")
-				virus_type = /datum/disease/pierrot_throat
-	for(var/mob/living/carbon/human/H in shuffle(living_mob_list))
-
-		var/foundAlready = 0 // don't infect someone that already has the virus
-		var/turf/T = get_turf(H)
-		if(!T)
-			continue
-		if(isNotStationLevel(T.z))
-			continue
-		for(var/datum/disease/D in H.viruses)
-			foundAlready = 1
-		if(H.stat == 2 || foundAlready)
-			continue
-
-		if(virus_type == /datum/disease/dnaspread) //Dnaspread needs strain_data set to work.
-			if((!H.dna) || (H.sdisabilities & BLIND)) //A blindness disease would be the worst.
+	for(var/mob/living/carbon/human/H in shuffle(living_mob_list_))
+		if(H.client && H.stat != DEAD)
+			var/obj/item/organ/internal/appendix/A = H.get_organ("appendix")
+			if(!istype(A) || (A && A.inflamed))
 				continue
-			var/datum/disease/dnaspread/D = new
-			D.strain_data["name"] = H.real_name
-			D.strain_data["UI"] = H.dna.uni_identity
-			D.strain_data["SE"] = H.dna.struc_enzymes
-			D.carrier = 1
-			D.holder = H
-			D.affected_mob = H
-			H.viruses += D
+			A.inflamed = 1
+			A.update_icon()
 			break
-		else
-			var/datum/disease/D = new virus_type
-			D.carrier = 1
-			D.holder = H
-			D.affected_mob = H
-			H.viruses += D
-			break
-	spawn(rand(1500, 3000)) //Delayed announcements to keep the crew on their toes.
-		command_announcement.Announce("Confirmed outbreak of level 7 viral biohazard aboard [station_name()]. All personnel must contain the outbreak.", "Biohazard Alert", new_sound = 'sound/AI/outbreak7.ogg')
+
 
 /proc/alien_infestation(var/spawncount = 1) // -- TLE
 	//command_alert("Unidentified lifesigns detected coming aboard [station_name()]. Secure any exterior access, including ducting and ventilation.", "Lifesign Alert")
 	//world << sound('sound/AI/aliens.ogg')
 	var/list/vents = list()
 	for(var/obj/machinery/atmospherics/unary/vent_pump/temp_vent in machines)
-		if(!temp_vent.welded && temp_vent.network && temp_vent.loc.z in config.station_levels)
+		if(!temp_vent.welded && temp_vent.network && temp_vent.loc.z in using_map.station_levels)
 			if(temp_vent.network.normal_members.len > 50) // Stops Aliens getting stuck in small networks. See: Security, Virology
 				vents += temp_vent
 
@@ -218,16 +152,16 @@ var/hadevent    = 0
 
 	sleep(100)
 */
-	for(var/mob/living/carbon/human/H in living_mob_list)
+	for(var/mob/living/carbon/human/H in living_mob_list_)
 		var/turf/T = get_turf(H)
 		if(!T)
 			continue
 		if(isNotStationLevel(T.z))
 			continue
 		if(istype(H,/mob/living/carbon/human))
-			H.apply_effect((rand(15,75)),IRRADIATE,0)
+			H.apply_effect((rand(15,75)),IRRADIATE, blocked = H.getarmor(null, "rad"))
 			if (prob(5))
-				H.apply_effect((rand(90,150)),IRRADIATE,0)
+				H.apply_effect((rand(90,150)),IRRADIATE, blocked = H.getarmor(null, "rad"))
 			if (prob(25))
 				if (prob(75))
 					randmutb(H)
@@ -325,7 +259,7 @@ Would like to add a law like "Law x is _______" where x = a number, and _____ is
 */
 
 	//AI laws
-	for(var/mob/living/silicon/ai/M in living_mob_list)
+	for(var/mob/living/silicon/ai/M in living_mob_list_)
 		if(M.stat != 2 && M.see_in_dark != 0)
 			var/who2 = pick("ALIENS", "BEARS", "CLOWNS", "XENOS", "PETES", "BOMBS", "FETISHES", "WIZARDS", "SYNDICATE AGENTS", "CENTCOM OFFICERS", "SPACE PIRATES", "TRAITORS", "MONKEYS",  "BEES", "CARP", "CRABS", "EELS", "BANDITS", "LIGHTS")
 			var/what2 = pick("BOLTERS", "STAVES", "DICE", "SINGULARITIES", "TOOLBOXES", "NETTLES", "AIRLOCKS", "CLOTHES", "WEAPONS", "MEDKITS", "BOMBS", "CANISTERS", "CHAIRS", "BBQ GRILLS", "ID CARDS", "CAPTAINS")

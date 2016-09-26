@@ -53,7 +53,7 @@
 	explode()
 
 /mob/living/bot/attackby(var/obj/item/O, var/mob/user)
-	if(O.GetID())
+	if(O.GetIdCard())
 		if(access_scanner.allowed(user) && !open && !emagged)
 			locked = !locked
 			user << "<span class='notice'>Controls are now [locked ? "locked." : "unlocked."]</span>"
@@ -123,3 +123,17 @@
 /mob/living/bot/proc/explode()
 	qdel(src)
 
+/mob/living/bot/proc/turf_is_targetable(var/turf/T)
+	if(T.density)
+		return 0
+	for(var/atom/A in T.contents)
+		if(!A.CanPass(src, T, 0.5))
+			if(isairlock(A))
+				var/obj/machinery/door/D = A
+				if(D.allowed(src))
+					continue
+			return 0
+	return 1
+				
+			
+	

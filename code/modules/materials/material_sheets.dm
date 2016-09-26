@@ -2,20 +2,20 @@
 /obj/item/stack/material
 	force = 5.0
 	throwforce = 5
-	w_class = 3.0
+	w_class = 4
 	throw_speed = 3
 	throw_range = 3
-	max_amount = 50
+	max_amount = 60
+	center_of_mass = null
+	randpixel = 3
 
 	var/default_type = DEFAULT_WALL_MATERIAL
 	var/material/material
-	var/perunit
+	var/perunit = SHEET_MATERIAL_AMOUNT
 	var/apply_colour //temp pending icon rewrite
 
-/obj/item/stack/material/New()
-	..()
-	pixel_x = rand(0,4)-4
-	pixel_y = rand(0,4)-4
+/obj/item/stack/material/New(atom/newloc, var/amount=null)
+	..(newloc, amount)
 
 	if(!default_type)
 		default_type = DEFAULT_WALL_MATERIAL
@@ -28,13 +28,14 @@
 	stacktype = material.stack_type
 	if(islist(material.stack_origin_tech))
 		origin_tech = material.stack_origin_tech.Copy()
-	perunit = SHEET_MATERIAL_AMOUNT
 
 	if(apply_colour)
 		color = material.icon_colour
 
 	if(material.conductive)
 		flags |= CONDUCT
+	else
+		flags &= (~CONDUCT)
 
 	matter = material.get_matter()
 	update_strings()
@@ -119,6 +120,9 @@
 	icon_state = "sheet-plastic"
 	default_type = "plastic"
 
+/obj/item/stack/material/plastic/fifty
+	amount = 50
+
 /obj/item/stack/material/gold
 	name = "gold"
 	icon_state = "sheet-gold"
@@ -159,16 +163,25 @@
 	icon_state = "sheet-metal"
 	default_type = DEFAULT_WALL_MATERIAL
 
+/obj/item/stack/material/steel/fifty
+	amount = 50
+
 /obj/item/stack/material/plasteel
 	name = "plasteel"
 	icon_state = "sheet-plasteel"
 	item_state = "sheet-metal"
 	default_type = "plasteel"
 
+/obj/item/stack/material/plasteel/fifty
+	amount = 50
+
 /obj/item/stack/material/wood
 	name = "wooden plank"
 	icon_state = "sheet-wood"
 	default_type = "wood"
+
+/obj/item/stack/material/wood/fifty
+	amount = 50
 
 /obj/item/stack/material/cloth
 	name = "cloth"
@@ -179,6 +192,9 @@
 	name = "cardboard"
 	icon_state = "sheet-card"
 	default_type = "cardboard"
+
+/obj/item/stack/material/cardboard/fifty
+	amount = 50
 
 /obj/item/stack/material/leather
 	name = "leather"
@@ -191,6 +207,9 @@
 	icon_state = "sheet-glass"
 	default_type = "glass"
 
+/obj/item/stack/material/glass/fifty
+	amount = 50
+
 /obj/item/stack/material/glass/reinforced
 	name = "reinforced glass"
 	icon_state = "sheet-rglass"
@@ -198,14 +217,14 @@
 
 /obj/item/stack/material/glass/phoronglass
 	name = "borosilicate glass"
-	desc = "This sheet is special platinum-glass alloy designed to withstand large temperatures"
+	desc = "This sheet is special platinum-glass alloy designed to withstand large temperatures."
 	singular_name = "borosilicate glass sheet"
 	icon_state = "sheet-phoronglass"
-	default_type = "borosilicate glass"
+	default_type = "phglass"
 
 /obj/item/stack/material/glass/phoronrglass
 	name = "reinforced borosilicate glass"
 	desc = "This sheet is special platinum-glass alloy designed to withstand large temperatures. It is reinforced with few rods."
 	singular_name = "reinforced borosilicate glass sheet"
 	icon_state = "sheet-phoronrglass"
-	default_type = "reinforced borosilicate glass"
+	default_type = "rphglass"

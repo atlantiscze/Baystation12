@@ -5,7 +5,7 @@
 	origin_tech = list(TECH_MATERIAL = 2, TECH_COMBAT = 1)
 	var/banglet = 0
 
-	prime()
+	detonate()
 		..()
 		for(var/obj/structure/closet/L in hear(7, get_turf(src)))
 			if(locate(/mob/living/carbon/, L))
@@ -22,18 +22,14 @@
 			B.update_icon()
 
 		new/obj/effect/sparks(src.loc)
-		new/obj/effect/effect/smoke/illumination(src.loc, brightness=15)
+		new/obj/effect/effect/smoke/illumination(src.loc, 5, range=30, power=30, color="#FFFFFF")
 		qdel(src)
 		return
 
 	proc/bang(var/turf/T , var/mob/living/carbon/M)					// Added a new proc called 'bang' that takes a location and a person to be banged.
-		if (locate(/obj/item/weapon/cloaking_device, M))			// Called during the loop that bangs people in lockers/containers and when banging
-			for(var/obj/item/weapon/cloaking_device/S in M)			// people in normal view.  Could theroetically be called during other explosions.
-				S.active = 0										// -- Polymorph
-				S.icon_state = "shield0"
-
-		M << "<span class='danger'>BANG</span>"
-		playsound(src.loc, 'sound/effects/bang.ogg', 50, 1, 5)
+		M << "<span class='danger'>BANG</span>"						// Called during the loop that bangs people in lockers/containers and when banging
+		playsound(src.loc, 'sound/effects/bang.ogg', 50, 1, 30)		// people in normal view.  Could theroetically be called during other explosions.
+																	// -- Polymorph
 
 //Checking for protections
 		var/eye_safety = 0
@@ -50,7 +46,7 @@
 
 //Flashing everyone
 		if(eye_safety < FLASH_PROTECTION_MODERATE)
-			flick("e_flash", M.flash)
+			M.flash_eyes()
 			M.Stun(2)
 			M.Weaken(10)
 
@@ -84,7 +80,7 @@
 //This really should be in mob not every check
 		if(ishuman(M))
 			var/mob/living/carbon/human/H = M
-			var/obj/item/organ/eyes/E = H.internal_organs_by_name["eyes"]
+			var/obj/item/organ/internal/eyes/E = H.internal_organs_by_name[BP_EYES]
 			if (E && E.damage >= E.min_bruised_damage)
 				M << "<span class='danger'>Your eyes start to burn badly!</span>"
 				if(!banglet && !(istype(src , /obj/item/weapon/grenade/flashbang/clusterbang)))
@@ -107,7 +103,7 @@
 	icon = 'icons/obj/grenade.dmi'
 	icon_state = "clusterbang"
 
-/obj/item/weapon/grenade/flashbang/clusterbang/prime()
+/obj/item/weapon/grenade/flashbang/clusterbang/detonate()
 	var/numspawned = rand(4,8)
 	var/again = 0
 	for(var/more = numspawned,more > 0,more--)
@@ -142,10 +138,10 @@
 	walk_away(src,temploc,stepdist)//I must go, my people need me
 	var/dettime = rand(15,60)
 	spawn(dettime)
-		prime()
+		detonate()
 	..()
 
-/obj/item/weapon/grenade/flashbang/clusterbang/segment/prime()
+/obj/item/weapon/grenade/flashbang/clusterbang/segment/detonate()
 	var/numspawned = rand(4,8)
 	for(var/more = numspawned,more > 0,more--)
 		if(prob(35))
@@ -168,5 +164,5 @@
 		walk_away(src,temploc,stepdist)
 		var/dettime = rand(15,60)
 		spawn(dettime)
-		prime()
+		detonate()
 	..()

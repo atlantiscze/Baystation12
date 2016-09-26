@@ -59,7 +59,7 @@
 	throwforce = 5.0
 	throw_speed = 1
 	throw_range = 4
-	w_class = 4.0
+	w_class = 5
 	origin_tech = list(TECH_MATERIAL = 2)
 	matter = list("glass" = 7500, DEFAULT_WALL_MATERIAL = 1000)
 	attack_verb = list("shoved", "bashed")
@@ -86,6 +86,31 @@
 	else
 		..()
 
+/obj/item/weapon/shield/buckler
+	name = "buckler"
+	desc = "A wooden buckler used to block sharp things from entering your body back in the day.."
+	icon = 'icons/obj/weapons.dmi'
+	icon_state = "buckler"
+	slot_flags = SLOT_BACK
+	force = 8
+	throwforce = 8
+	base_block_chance = 60
+	throw_speed = 10
+	throw_range = 20
+	w_class = 5
+	origin_tech = list(TECH_MATERIAL = 1)
+	matter = list(DEFAULT_WALL_MATERIAL = 1000, "Wood" = 1000)
+	attack_verb = list("shoved", "bashed")
+
+/obj/item/weapon/shield/buckler/handle_shield(mob/user)
+	. = ..()
+	if(.) playsound(user.loc, 'sound/weapons/Genhit.ogg', 50, 1)
+
+/obj/item/weapon/shield/buckler/get_block_chance(mob/user, var/damage, atom/damage_source = null, mob/attacker = null)
+	if(istype(damage_source, /obj/item/projectile))
+		return 0 //No blocking bullets, I'm afraid.
+	return base_block_chance
+
 /*
  * Energy Shield
  */
@@ -111,7 +136,7 @@
 	. = ..()
 
 	if(.)
-		var/datum/effect/effect/system/spark_spread/spark_system = PoolOrNew(/datum/effect/effect/system/spark_spread)
+		var/datum/effect/effect/system/spark_spread/spark_system = new /datum/effect/effect/system/spark_spread()
 		spark_system.set_up(5, 0, user.loc)
 		spark_system.start()
 		playsound(user.loc, 'sound/weapons/blade1.ogg', 50, 1)
@@ -131,7 +156,7 @@
 	if (active)
 		force = 10
 		update_icon()
-		w_class = 4
+		w_class = 5
 		playsound(user, 'sound/weapons/saberon.ogg', 50, 1)
 		user << "<span class='notice'>\The [src] is now active.</span>"
 
@@ -156,37 +181,4 @@
 		set_light(1.5, 1.5, "#006AFF")
 	else
 		set_light(0)
-
-/obj/item/weapon/cloaking_device
-	name = "cloaking device"
-	desc = "Use this to become invisible to the human eye."
-	icon = 'icons/obj/device.dmi'
-	icon_state = "shield0"
-	var/active = 0.0
-	flags = CONDUCT
-	item_state = "electronic"
-	throwforce = 10.0
-	throw_speed = 2
-	throw_range = 10
-	w_class = 2.0
-	origin_tech = list(TECH_MAGNET = 3, TECH_ILLEGAL = 4)
-
-
-/obj/item/weapon/cloaking_device/attack_self(mob/user as mob)
-	src.active = !( src.active )
-	if (src.active)
-		user << "<span class='notice'>\The [src] is now active.</span>"
-		src.icon_state = "shield1"
-	else
-		user << "<span class='notice'>\The [src] is now inactive.</span>"
-		src.icon_state = "shield0"
-	src.add_fingerprint(user)
-	return
-
-/obj/item/weapon/cloaking_device/emp_act(severity)
-	active = 0
-	icon_state = "shield0"
-	if(ismob(loc))
-		loc:update_icons()
-	..()
 

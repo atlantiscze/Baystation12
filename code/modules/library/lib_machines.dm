@@ -196,7 +196,7 @@ datum/borrowbook // Datum used to keep track of who has borrowed what when and f
 			else
 				dat += {"<A href='?src=\ref[src];orderbyid=1'>(Order book by SS<sup>13</sup>BN)</A><BR><BR>
 				<table>
-				<tr><td><A href='?src=\ref[src];sort=author>AUTHOR</A></td><td><A href='?src=\ref[src];sort=title>TITLE</A></td><td><A href='?src=\ref[src];sort=category>CATEGORY</A></td><td></td></tr>"}
+				<tr><td><A href='?src=\ref[src];sort=author'>AUTHOR</A></td><td><A href='?src=\ref[src];sort=title'>TITLE</A></td><td><A href='?src=\ref[src];sort=category'>CATEGORY</A></td><td></td></tr>"}
 				var/DBQuery/query = dbcon_old.NewQuery("SELECT id, author, title, category FROM library ORDER BY [sortby]")
 				query.Execute()
 
@@ -353,6 +353,7 @@ datum/borrowbook // Datum used to keep track of who has borrowed what when and f
 							if(!query.Execute())
 								usr << query.ErrorMsg()
 							else
+								log_and_message_admins("has uploaded the book titled [scanner.cache.name], [length(scanner.cache.dat)] signs")
 								log_game("[usr.name]/[usr.key] has uploaded the book titled [scanner.cache.name], [length(scanner.cache.dat)] signs")
 								alert("Upload Complete.")
 

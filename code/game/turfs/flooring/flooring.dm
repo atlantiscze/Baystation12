@@ -69,7 +69,7 @@ var/list/flooring_types
 	name = "carpet"
 	icon_base = "bcarpet"
 	build_type = null
-	flags = TURF_HAS_EDGES
+	flags = TURF_HAS_EDGES | TURF_HAS_CORNERS | TURF_REMOVE_CROWBAR | TURF_CAN_BURN
 
 /decl/flooring/tiling
 	name = "floor"
@@ -88,13 +88,8 @@ var/list/flooring_types
 	icon = 'icons/turf/flooring/linoleum.dmi'
 	icon_base = "lino"
 	can_paint = 1
-
-/decl/flooring/tiling/red
-	name = "floor"
-	icon_base = "white"
-	has_damage_range = null
-	flags = TURF_REMOVE_CROWBAR
-	build_type = /obj/item/stack/tile/floor_red
+	build_type = /obj/item/stack/tile/linoleum
+	flags = TURF_REMOVE_SCREWDRIVER
 
 /decl/flooring/tiling/steel
 	name = "floor"
@@ -110,13 +105,6 @@ var/list/flooring_types
 	has_damage_range = null
 	flags = TURF_REMOVE_CROWBAR
 	build_type = /obj/item/stack/tile/floor_white
-
-/decl/flooring/tiling/yellow
-	name = "floor"
-	icon_base = "white"
-	has_damage_range = null
-	flags = TURF_REMOVE_CROWBAR
-	build_type = /obj/item/stack/tile/floor_yellow
 
 /decl/flooring/tiling/dark
 	name = "floor"
@@ -163,12 +151,16 @@ var/list/flooring_types
 	icon = 'icons/turf/flooring/circuit.dmi'
 	icon_base = "bcircuit"
 	build_type = null
-	flags = TURF_ACID_IMMUNE | TURF_CAN_BREAK
+	flags = TURF_ACID_IMMUNE | TURF_CAN_BREAK | TURF_REMOVE_WRENCH
 	can_paint = 1
 
 /decl/flooring/reinforced/circuit/green
-	name = "processing strata"
 	icon_base = "gcircuit"
+
+/decl/flooring/reinforced/circuit/red
+	icon_base = "rcircuit"
+	flags = TURF_ACID_IMMUNE
+	can_paint = 0
 
 /decl/flooring/reinforced/cult
 	name = "engraved floor"
@@ -179,3 +171,38 @@ var/list/flooring_types
 	has_damage_range = 6
 	flags = TURF_ACID_IMMUNE | TURF_CAN_BREAK
 	can_paint = null
+
+/decl/flooring/reinforced/shuttle
+	name = "floor"
+	icon = 'icons/turf/shuttle.dmi'
+	build_type = null
+	flags = TURF_ACID_IMMUNE | TURF_CAN_BREAK | TURF_REMOVE_WRENCH
+	can_paint = 1
+
+/decl/flooring/reinforced/shuttle/blue
+	icon_base = "floor"
+
+/decl/flooring/reinforced/shuttle/yellow
+	icon_base = "floor2"
+
+/decl/flooring/reinforced/shuttle/white
+	icon_base = "floor3"
+
+/decl/flooring/reinforced/shuttle/red
+	icon_base = "floor4"
+
+/decl/flooring/reinforced/shuttle/purple
+	icon_base = "floor5"
+
+/decl/flooring/reinforced/shuttle/darkred
+	icon_base = "floor6"
+
+/decl/flooring/reinforced/shuttle/black
+	icon_base = "floor7"
+
+/decl/flooring/diona
+	name = "biomass"
+	desc = "a mass of small intertwined aliens forming a floor... Creepy."
+	icon = 'icons/turf/floors.dmi'
+	icon_base = "diona"
+	flags = TURF_ACID_IMMUNE | TURF_REMOVE_SHOVEL

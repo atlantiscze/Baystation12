@@ -21,7 +21,7 @@ var/list/floor_decals = list()
 		var/cache_key = "[alpha]-[color]-[dir]-[icon_state]-[layer]"
 		if(!floor_decals[cache_key])
 			var/image/I = image(icon = src.icon, icon_state = src.icon_state, dir = src.dir)
-			I.layer = T.layer + 0.01
+			I.layer = T.layer
 			I.color = src.color
 			I.alpha = src.alpha
 			floor_decals[cache_key] = I
@@ -44,6 +44,7 @@ var/list/floor_decals = list()
 
 /obj/effect/floor_decal/corner
 	icon_state = "corner_white"
+	alpha = 229
 
 /obj/effect/floor_decal/corner/black
 	name = "black corner"
@@ -52,8 +53,8 @@ var/list/floor_decals = list()
 /obj/effect/floor_decal/corner/black/diagonal
 	icon_state = "corner_white_diagonal"
 
-/obj/effect/floor_decal/corner/black/full
-	icon_state = "corner_white_full"
+/obj/effect/floor_decal/corner/black/three_quarters
+	icon_state = "corner_white_three_quarters"
 
 /obj/effect/floor_decal/corner/blue
 	name = "blue corner"
@@ -62,8 +63,8 @@ var/list/floor_decals = list()
 /obj/effect/floor_decal/corner/blue/diagonal
 	icon_state = "corner_white_diagonal"
 
-/obj/effect/floor_decal/corner/blue/full
-	icon_state = "corner_white_full"
+/obj/effect/floor_decal/corner/blue/three_quarters
+	icon_state = "corner_white_three_quarters"
 
 /obj/effect/floor_decal/corner/paleblue
 	name = "pale blue corner"
@@ -72,8 +73,8 @@ var/list/floor_decals = list()
 /obj/effect/floor_decal/corner/paleblue/diagonal
 	icon_state = "corner_white_diagonal"
 
-/obj/effect/floor_decal/corner/paleblue/full
-	icon_state = "corner_white_full"
+/obj/effect/floor_decal/corner/paleblue/three_quarters
+	icon_state = "corner_white_three_quarters"
 
 /obj/effect/floor_decal/corner/green
 	name = "green corner"
@@ -82,8 +83,8 @@ var/list/floor_decals = list()
 /obj/effect/floor_decal/corner/green/diagonal
 	icon_state = "corner_white_diagonal"
 
-/obj/effect/floor_decal/corner/green/full
-	icon_state = "corner_white_full"
+/obj/effect/floor_decal/corner/green/three_quarters
+	icon_state = "corner_white_three_quarters"
 
 /obj/effect/floor_decal/corner/lime
 	name = "lime corner"
@@ -92,8 +93,8 @@ var/list/floor_decals = list()
 /obj/effect/floor_decal/corner/lime/diagonal
 	icon_state = "corner_white_diagonal"
 
-/obj/effect/floor_decal/corner/lime/full
-	icon_state = "corner_white_full"
+/obj/effect/floor_decal/corner/lime/three_quarters
+	icon_state = "corner_white_three_quarters"
 
 /obj/effect/floor_decal/corner/yellow
 	name = "yellow corner"
@@ -101,6 +102,9 @@ var/list/floor_decals = list()
 
 /obj/effect/floor_decal/corner/yellow/diagonal
 	icon_state = "corner_white_diagonal"
+
+/obj/effect/floor_decal/corner/yellow/three_quarters
+	icon_state = "corner_white_three_quarters"
 
 /obj/effect/floor_decal/corner/yellow/full
 	icon_state = "corner_white_full"
@@ -112,8 +116,8 @@ var/list/floor_decals = list()
 /obj/effect/floor_decal/corner/beige/diagonal
 	icon_state = "corner_white_diagonal"
 
-/obj/effect/floor_decal/corner/beige/full
-	icon_state = "corner_white_full"
+/obj/effect/floor_decal/corner/beige/three_quarters
+	icon_state = "corner_white_three_quarters"
 
 /obj/effect/floor_decal/corner/red
 	name = "red corner"
@@ -121,6 +125,9 @@ var/list/floor_decals = list()
 
 /obj/effect/floor_decal/corner/red/diagonal
 	icon_state = "corner_white_diagonal"
+
+/obj/effect/floor_decal/corner/red/three_quarters
+	icon_state = "corner_white_three_quarters"
 
 /obj/effect/floor_decal/corner/red/full
 	icon_state = "corner_white_full"
@@ -132,8 +139,8 @@ var/list/floor_decals = list()
 /obj/effect/floor_decal/corner/pink/diagonal
 	icon_state = "corner_white_diagonal"
 
-/obj/effect/floor_decal/corner/pink/full
-	icon_state = "corner_white_full"
+/obj/effect/floor_decal/corner/pink/three_quarters
+	icon_state = "corner_white_three_quarters"
 
 /obj/effect/floor_decal/corner/purple
 	name = "purple corner"
@@ -142,8 +149,8 @@ var/list/floor_decals = list()
 /obj/effect/floor_decal/corner/purple/diagonal
 	icon_state = "corner_white_diagonal"
 
-/obj/effect/floor_decal/corner/purple/full
-	icon_state = "corner_white_full"
+/obj/effect/floor_decal/corner/purple/three_quarters
+	icon_state = "corner_white_three_quarters"
 
 /obj/effect/floor_decal/corner/mauve
 	name = "mauve corner"
@@ -152,8 +159,8 @@ var/list/floor_decals = list()
 /obj/effect/floor_decal/corner/mauve/diagonal
 	icon_state = "corner_white_diagonal"
 
-/obj/effect/floor_decal/corner/mauve/full
-	icon_state = "corner_white_full"
+/obj/effect/floor_decal/corner/mauve/three_quarters
+	icon_state = "corner_white_three_quarters"
 
 /obj/effect/floor_decal/corner/orange
 	name = "orange corner"
@@ -162,8 +169,8 @@ var/list/floor_decals = list()
 /obj/effect/floor_decal/corner/orange/diagonal
 	icon_state = "corner_white_diagonal"
 
-/obj/effect/floor_decal/corner/orange/full
-	icon_state = "corner_white_full"
+/obj/effect/floor_decal/corner/orange/three_quarters
+	icon_state = "corner_white_three_quarters"
 
 /obj/effect/floor_decal/corner/brown
 	name = "brown corner"
@@ -172,8 +179,8 @@ var/list/floor_decals = list()
 /obj/effect/floor_decal/corner/brown/diagonal
 	icon_state = "corner_white_diagonal"
 
-/obj/effect/floor_decal/corner/brown/full
-	icon_state = "corner_white_full"
+/obj/effect/floor_decal/corner/brown/three_quarters
+	icon_state = "corner_white_three_quarters"
 
 /obj/effect/floor_decal/corner/white
 	name = "white corner"
@@ -182,8 +189,8 @@ var/list/floor_decals = list()
 /obj/effect/floor_decal/corner/white/diagonal
 	icon_state = "corner_white_diagonal"
 
-/obj/effect/floor_decal/corner/white/full
-	icon_state = "corner_white_full"
+/obj/effect/floor_decal/corner/white/three_quarters
+	icon_state = "corner_white_three_quarters"
 
 /obj/effect/floor_decal/corner/grey
 	name = "grey corner"
@@ -192,8 +199,8 @@ var/list/floor_decals = list()
 /obj/effect/floor_decal/corner/grey/diagonal
 	icon_state = "corner_white_diagonal"
 
-/obj/effect/floor_decal/corner/grey/full
-	icon_state = "corner_white_full"
+/obj/effect/floor_decal/corner/grey/three_quarters
+	icon_state = "corner_white_three_quarters"
 
 /obj/effect/floor_decal/spline/plain
 	name = "spline - plain"
@@ -213,7 +220,7 @@ var/list/floor_decals = list()
 /obj/effect/floor_decal/spline/fancy/wood/cee
 	icon_state = "spline_fancy_cee"
 
-/obj/effect/floor_decal/spline/fancy/wood/full
+/obj/effect/floor_decal/spline/fancy/wood/three_quarters
 	icon_state = "spline_fancy_full"
 
 /obj/effect/floor_decal/industrial/warning
@@ -240,6 +247,7 @@ var/list/floor_decals = list()
 /obj/effect/floor_decal/industrial/hatch
 	name = "hatched marking"
 	icon_state = "delivery"
+	alpha = 229
 
 /obj/effect/floor_decal/industrial/hatch/yellow
 	color = "#CFCF55"
@@ -247,6 +255,7 @@ var/list/floor_decals = list()
 /obj/effect/floor_decal/industrial/outline
 	name = "white outline"
 	icon_state = "outline"
+	alpha = 229
 
 /obj/effect/floor_decal/industrial/outline/blue
 	name = "blue outline"
@@ -263,6 +272,7 @@ var/list/floor_decals = list()
 /obj/effect/floor_decal/industrial/loading
 	name = "loading area"
 	icon_state = "loadingarea"
+	alpha = 229
 
 /obj/effect/floor_decal/plaque
 	name = "plaque"
@@ -392,3 +402,11 @@ var/list/floor_decals = list()
 
 /obj/effect/floor_decal/sign/p
 	icon_state = "white_p"
+
+/obj/effect/floor_decal/solarpanel
+	icon_state = "solarpanel"
+
+/obj/effect/floor_decal/snow
+	icon = 'icons/turf/overlays.dmi'
+	icon_state = "snowfloor"
+

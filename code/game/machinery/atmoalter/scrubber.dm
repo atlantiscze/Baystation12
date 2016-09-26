@@ -17,7 +17,7 @@
 	var/minrate = 0
 	var/maxrate = 10 * ONE_ATMOSPHERE
 
-	var/list/scrubbing_gas = list("phoron", "carbon_dioxide", "sleeping_agent", "oxygen_agent_b")
+	var/list/scrubbing_gas = list("phoron", "carbon_dioxide", "sleeping_agent")
 
 /obj/machinery/portable_atmospherics/powered/scrubber/New()
 	..()
@@ -83,9 +83,6 @@
 
 	//src.update_icon()
 	src.updateDialog()
-
-/obj/machinery/portable_atmospherics/powered/scrubber/return_air()
-	return air_contents
 
 /obj/machinery/portable_atmospherics/powered/scrubber/attack_ai(var/mob/user)
 	src.add_hiddenprint(user)

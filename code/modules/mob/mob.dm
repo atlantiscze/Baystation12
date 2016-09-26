@@ -1,9 +1,10 @@
 /mob/Destroy()//This makes sure that mobs with clients/keys are not just deleted from the game.
 	mob_list -= src
-	dead_mob_list -= src
-	living_mob_list -= src
+	dead_mob_list_ -= src
+	living_mob_list_ -= src
 	unset_machine()
 	qdel(hud_used)
+	clear_fullscreen()
 	if(client)
 		for(var/obj/screen/movable/spell_master/spell_master in spell_masters)
 			qdel(spell_master)
@@ -13,14 +14,10 @@
 		client.screen = list()
 	if(mind && mind.current == src)
 		spellremove(src)
-	for(var/infection in viruses)
-		qdel(infection)
 	ghostize()
-	..()
+	. = ..()
 
 /mob/proc/remove_screen_obj_references()
-	flash = null
-	blind = null
 	hands = null
 	pullin = null
 	purged = null
@@ -35,7 +32,6 @@
 	throw_icon = null
 	nutrition_icon = null
 	pressure = null
-	damageoverlay = null
 	pain = null
 	item_use_icon = null
 	gun_move_icon = null
@@ -45,61 +41,55 @@
 
 /mob/New()
 	mob_list += src
-	if(stat == DEAD)
-		dead_mob_list += src
-	else
-		living_mob_list += src
 	..()
 
 /mob/proc/show_message(msg, type, alt, alt_type)//Message, type of message (1 or 2), alternative message, alt message type (1 or 2)
-
 	if(!client)	return
 
-	if (type)
-		if(type & 1 && (sdisabilities & BLIND || blinded || paralysis) )//Vision related
-			if (!( alt ))
+	//spaghetti code
+	if(type)
+		if((type & VISIBLE_MESSAGE) && is_blind())//Vision related
+			if(!alt)
 				return
 			else
 				msg = alt
 				type = alt_type
-		if (type & 2 && (sdisabilities & DEAF || ear_deaf))//Hearing related
-			if (!( alt ))
+		if((type & AUDIBLE_MESSAGE) && is_deaf())//Hearing related
+			if(!alt)
 				return
 			else
 				msg = alt
 				type = alt_type
-				if ((type & 1 && sdisabilities & BLIND))
+				if(((type & VISIBLE_MESSAGE) && is_blind()))
 					return
-	// Added voice muffling for Issue 41.
-	if(stat == UNCONSCIOUS || sleeping > 0)
-		src << "<I>... You can almost hear someone talking ...</I>"
-	else
-		src << msg
-	return
+
+	to_chat(src, msg)
+
+
 
 // Show a message to all mobs and objects in sight of this one
 // This would be for visible actions by the src mob
 // message is the message output to anyone who can see e.g. "[src] does something!"
 // self_message (optional) is what the src mob sees  e.g. "You do something!"
 // blind_message (optional) is what blind people will hear e.g. "You hear something!"
+/mob/visible_message(var/message, var/self_message, var/blind_message, var/range = world.view, var/checkghosts = null)
+	var/turf/T = get_turf(src)
+	var/list/mobs = list()
+	var/list/objs = list()
+	get_mobs_and_objs_in_view_fast(T,range, mobs, objs, checkghosts)
 
-/mob/visible_message(var/message, var/self_message, var/blind_message)
-	var/list/see = get_mobs_or_objects_in_view(world.view,src) | viewers(world.view,src)
+	for(var/o in objs)
+		var/obj/O = o
+		O.show_message(message, VISIBLE_MESSAGE, blind_message, AUDIBLE_MESSAGE)
 
-	for(var/I in see)
-		if(isobj(I))
-			spawn(0)
-				if(I) //It's possible that it could be deleted in the meantime.
-					var/obj/O = I
-					O.show_message( message, 1, blind_message, 2)
-		else if(ismob(I))
-			var/mob/M = I
-			if(self_message && M==src)
-				M.show_message( self_message, 1, blind_message, 2)
-			else if(M.see_invisible >= invisibility) // Cannot view the invisible
-				M.show_message( message, 1, blind_message, 2)
-			else if (blind_message)
-				M.show_message(blind_message, 2)
+	for(var/m in mobs)
+		var/mob/M = m
+		if(self_message && M == src)
+			M.show_message(self_message, VISIBLE_MESSAGE, blind_message, AUDIBLE_MESSAGE)
+		if(M.see_invisible >= invisibility)
+			M.show_message(message, VISIBLE_MESSAGE, blind_message, AUDIBLE_MESSAGE)
+		else if(blind_message)
+			M.show_message(blind_message, AUDIBLE_MESSAGE)
 
 // Returns an amount of power drawn from the object (-1 if it's not viable).
 // If drain_check is set it will not actually drain power, just return a value.
@@ -114,26 +104,24 @@
 // self_message (optional) is what the src mob hears.
 // deaf_message (optional) is what deaf people will see.
 // hearing_distance (optional) is the range, how many tiles away the message can be heard.
-/mob/audible_message(var/message, var/deaf_message, var/hearing_distance, var/self_message)
+/mob/audible_message(var/message, var/self_message, var/deaf_message, var/hearing_distance = world.view, var/checkghosts = null)
+	var/turf/T = get_turf(src)
+	var/list/mobs = list()
+	var/list/objs = list()
+	get_mobs_and_objs_in_view_fast(T, hearing_distance, mobs, objs, checkghosts)
 
-	var/range = world.view
-	if(hearing_distance)
-		range = hearing_distance
-	var/list/hear = get_mobs_or_objects_in_view(range,src)
+	for(var/m in mobs)
+		var/mob/M = m
+		if(self_message && M == src)
+			M.show_message(self_message, AUDIBLE_MESSAGE, deaf_message, VISIBLE_MESSAGE)
+		else if(M.see_invisible >= invisibility) // Cannot view the invisible
+			M.show_message(message, AUDIBLE_MESSAGE, deaf_message, VISIBLE_MESSAGE)
+		else
+			M.show_message(message, AUDIBLE_MESSAGE)
 
-	for(var/I in hear)
-		if(isobj(I))
-			spawn(0)
-				if(I) //It's possible that it could be deleted in the meantime.
-					var/obj/O = I
-					O.show_message( message, 2, deaf_message, 1)
-		else if(ismob(I))
-			var/mob/M = I
-			var/msg = message
-			if(self_message && M==src)
-				msg = self_message
-			M.show_message( msg, 2, deaf_message, 1)
-
+	for(var/o in objs)
+		var/obj/O = o
+		O.show_message(message, AUDIBLE_MESSAGE, deaf_message, VISIBLE_MESSAGE)
 
 /mob/proc/findname(msg)
 	for(var/mob/M in mob_list)
@@ -142,7 +130,16 @@
 	return 0
 
 /mob/proc/movement_delay()
-	return 0
+	. = 0
+	if(pulling)
+		if(istype(pulling, /obj))
+			var/obj/O = pulling
+			. += O.w_class / 5
+		else if(istype(pulling, /mob))
+			var/mob/M = pulling
+			. += M.mob_size / MOB_MEDIUM
+		else
+			. += 1
 
 /mob/proc/Life()
 //	if(organStructure)
@@ -160,11 +157,27 @@
 		return UNBUCKLED
 	return restrained() ? FULLY_BUCKLED : PARTIALLY_BUCKLED
 
+/mob/proc/is_blind()
+	return ((sdisabilities & BLIND) || blinded || incapacitated(INCAPACITATION_KNOCKOUT))
+
+/mob/proc/is_deaf()
+	return ((sdisabilities & DEAF) || ear_deaf || incapacitated(INCAPACITATION_KNOCKOUT))
+
 /mob/proc/is_physically_disabled()
 	return incapacitated(INCAPACITATION_DISABLED)
-	
+
+/mob/proc/cannot_stand()
+	return incapacitated(INCAPACITATION_KNOCKDOWN)
+
 /mob/proc/incapacitated(var/incapacitation_flags = INCAPACITATION_DEFAULT)
-	if ((incapacitation_flags & INCAPACITATION_DISABLED) && (stat || paralysis || stunned || weakened || resting || sleeping || (status_flags & FAKEDEATH)))
+
+	if ((incapacitation_flags & INCAPACITATION_STUNNED) && stunned)
+		return 1
+
+	if ((incapacitation_flags & INCAPACITATION_FORCELYING) && (weakened || resting))
+		return 1
+
+	if ((incapacitation_flags & INCAPACITATION_KNOCKOUT) && (stat || paralysis || sleeping || (status_flags & FAKEDEATH)))
 		return 1
 
 	if((incapacitation_flags & INCAPACITATION_RESTRAINED) && restrained())
@@ -188,6 +201,7 @@
 
 /mob/proc/reset_view(atom/A)
 	if (client)
+		A = A ? A : eyeobj
 		if (istype(A, /atom/movable))
 			client.perspective = EYE_PERSPECTIVE
 			client.eye = A
@@ -202,21 +216,6 @@
 
 
 /mob/proc/show_inv(mob/user as mob)
-	user.set_machine(src)
-	var/dat = {"
-	<B><HR><FONT size=3>[name]</FONT></B>
-	<BR><HR>
-	<BR><B>Head(Mask):</B> <A href='?src=\ref[src];item=mask'>[(wear_mask ? wear_mask : "Nothing")]</A>
-	<BR><B>Left Hand:</B> <A href='?src=\ref[src];item=l_hand'>[(l_hand ? l_hand  : "Nothing")]</A>
-	<BR><B>Right Hand:</B> <A href='?src=\ref[src];item=r_hand'>[(r_hand ? r_hand : "Nothing")]</A>
-	<BR><B>Back:</B> <A href='?src=\ref[src];item=back'>[(back ? back : "Nothing")]</A> [((istype(wear_mask, /obj/item/clothing/mask) && istype(back, /obj/item/weapon/tank) && !( internal )) ? text(" <A href='?src=\ref[];item=internal'>Set Internal</A>", src) : "")]
-	<BR>[(internal ? text("<A href='?src=\ref[src];item=internal'>Remove Internal</A>") : "")]
-	<BR><A href='?src=\ref[src];item=pockets'>Empty Pockets</A>
-	<BR><A href='?src=\ref[user];refresh=1'>Refresh</A>
-	<BR><A href='?src=\ref[user];mach_close=mob[name]'>Close</A>
-	<BR>"}
-	user << browse(dat, text("window=mob[];size=325x500", name))
-	onclose(user, "mob[name]")
 	return
 
 //mob verbs are faster than object verbs. See http://www.byond.com/forum/?post=1326139&page=2#comment8198716 for why this isn't atom/verb/examine()
@@ -390,7 +389,7 @@
 	if ((stat != DEAD || !( ticker )))
 		usr << "<span class='notice'><B>You must be dead to use this!</B></span>"
 		return
-	if (ticker.mode.deny_respawn) //BS12 EDIT
+	if (ticker.mode && ticker.mode.deny_respawn)
 		usr << "<span class='notice'>Respawn is disabled for this roundtype.</span>"
 		return
 	else if(!MayRespawn(1, config.respawn_delay))
@@ -406,6 +405,7 @@
 		log_game("[usr.key] AM failed due to disconnect.")
 		return
 	client.screen.Cut()
+	add_click_catcher()
 	if(!client)
 		log_game("[usr.key] AM failed due to disconnect.")
 		return
@@ -563,7 +563,7 @@
 			for(var/name in H.organs_by_name)
 				var/obj/item/organ/external/e = H.organs_by_name[name]
 				if(e && H.lying)
-					if(((e.status & ORGAN_BROKEN && !(e.status & ORGAN_SPLINTED)) || e.status & ORGAN_BLEEDING) && (H.getBruteLoss() + H.getFireLoss() >= 100))
+					if((((e.status & ORGAN_BROKEN) && !e.splinted) || e.status & ORGAN_BLEEDING ) && (H.getBruteLoss() + H.getFireLoss() >= 100))
 						return 1
 						break
 		return 0
@@ -683,51 +683,50 @@
 /mob/Stat()
 	..()
 	. = (is_client_active(10 MINUTES))
+	if(!.)
+		return
 
-	if(.)
-		if(statpanel("Status") && ticker && ticker.current_state != GAME_STATE_PREGAME)
-			stat("Station Time", worldtime2text())
-			stat("Round Duration", round_duration())
-
+	if(statpanel("Status"))
+		if(ticker && ticker.current_state != GAME_STATE_PREGAME)
+			stat("Station Time", stationtime2text())
+			stat("Round Duration", roundduration2text())
+		if(client.holder || isghost(client.mob))
+			stat("Location:", "([x], [y], [z]) [loc]")
 		if(client.holder)
-			if(statpanel("Status"))
-				stat("Location:", "([x], [y], [z]) [loc]")
-				stat("CPU:","[world.cpu]")
-				stat("Instances:","[world.contents.len]")
-			if(statpanel("Processes"))
-				if(processScheduler)
-					processScheduler.statProcesses()
+			stat("CPU:","[world.cpu]")
+			stat("Instances:","[world.contents.len]")
 
-		if(listed_turf && client)
-			if(!TurfAdjacent(listed_turf))
-				listed_turf = null
-			else
-				if(statpanel("Turf"))
-					stat("\icon[listed_turf]", listed_turf.name)
-					for(var/atom/A in listed_turf)
-						if(!A.mouse_opacity)
-							continue
-						if(A.invisibility > see_invisible)
-							continue
-						if(is_type_in_list(A, shouldnt_see))
-							continue
-						stat(A)
+	if(client.holder && statpanel("Processes"))
+		if(processScheduler)
+			processScheduler.statProcesses()
+		sleep(1 SECOND)
+
+	if(listed_turf && client)
+		if(!TurfAdjacent(listed_turf))
+			listed_turf = null
+		else
+			if(statpanel("Turf"))
+				stat(listed_turf)
+				for(var/atom/A in listed_turf)
+					if(!A.mouse_opacity)
+						continue
+					if(A.invisibility > see_invisible)
+						continue
+					if(is_type_in_list(A, shouldnt_see))
+						continue
+					stat(A)
 
 
 // facing verbs
 /mob/proc/canface()
 	if(!canmove)						return 0
-	if(stat)							return 0
 	if(anchored)						return 0
-	if(transforming)						return 0
+	if(transforming)					return 0
 	return 1
 
 // Not sure what to call this. Used to check if humans are wearing an AI-controlled exosuit and hence don't need to fall over yet.
 /mob/proc/can_stand_overridden()
 	return 0
-
-/mob/proc/cannot_stand()
-	return incapacitated(INCAPACITATION_DEFAULT & (~INCAPACITATION_RESTRAINED))
 
 //Updates canmove, lying and icons. Could perhaps do with a rename but I can't think of anything to describe it.
 /mob/proc/update_canmove()
@@ -735,39 +734,20 @@
 	if(!resting && cannot_stand() && can_stand_overridden())
 		lying = 0
 		canmove = 1
-	else
-		if(istype(buckled, /obj/vehicle))
-			var/obj/vehicle/V = buckled
-			if(is_physically_disabled())
-				lying = 1
-				canmove = 0
-				pixel_y = V.mob_offset_y - 5
+	else if(buckled)
+		anchored = 1
+		canmove = 0
+		if(istype(buckled))
+			if(buckled.buckle_lying == -1)
+				lying = incapacitated(INCAPACITATION_KNOCKDOWN)
 			else
-				if(buckled.buckle_lying != -1) lying = buckled.buckle_lying
+				lying = buckled.buckle_lying
+			if(buckled.buckle_movable)
+				anchored = 0
 				canmove = 1
-				pixel_y = V.mob_offset_y
-		else if(buckled)
-			anchored = 1
-			canmove = 0
-			if(istype(buckled))
-				if(buckled.buckle_lying != -1)
-					lying = buckled.buckle_lying
-				if(buckled.buckle_movable)
-					anchored = 0
-					canmove = 1
-
-		else if(cannot_stand())
-			lying = 1
-			canmove = 0
-		else if(stunned)
-			canmove = 0
-		else if(captured)
-			anchored = 1
-			canmove = 0
-			lying = 0
-		else
-			lying = 0
-			canmove = 1
+	else
+		lying = incapacitated(INCAPACITATION_KNOCKDOWN)
+		canmove = !incapacitated(INCAPACITATION_DISABLED)
 
 	if(lying)
 		density = 0
@@ -961,7 +941,7 @@ mob/proc/yank_out_object()
 	else
 		U << "<span class='warning'>You attempt to get a good grip on [selection] in [S]'s body.</span>"
 
-	if(!do_after(U, 30))
+	if(!do_mob(U, S, 30))
 		return
 	if(!selection || !S || !U)
 		return
@@ -990,11 +970,17 @@ mob/proc/yank_out_object()
 		if(prob(selection.w_class * 5)) //I'M SO ANEMIC I COULD JUST -DIE-.
 			var/datum/wound/internal_bleeding/I = new (min(selection.w_class * 5, 15))
 			affected.wounds += I
-			H.custom_pain("Something tears wetly in your [affected] as [selection] is pulled free!", 1)
+			H.custom_pain("Something tears wetly in your [affected] as [selection] is pulled free!", 50)
 
 		if (ishuman(U))
 			var/mob/living/carbon/human/human_user = U
 			human_user.bloody_hands(H)
+
+	else if(issilicon(src))
+		var/mob/living/silicon/robot/R = src
+		R.embedded -= selection
+		R.adjustBruteLoss(5)
+		R.adjustFireLoss(10)
 
 	selection.forceMove(get_turf(src))
 	if(!(U.l_hand && U.r_hand))
@@ -1006,49 +992,6 @@ mob/proc/yank_out_object()
 		if(!pinned.len)
 			anchored = 0
 	return 1
-
-/mob/living/proc/handle_statuses()
-	handle_stunned()
-	handle_weakened()
-	handle_stuttering()
-	handle_silent()
-	handle_drugged()
-	handle_slurring()
-
-/mob/living/proc/handle_stunned()
-	if(stunned)
-		AdjustStunned(-1)
-	return stunned
-
-/mob/living/proc/handle_weakened()
-	if(weakened)
-		weakened = max(weakened-1,0)	//before you get mad Rockdtben: I done this so update_canmove isn't called multiple times
-	return weakened
-
-/mob/living/proc/handle_stuttering()
-	if(stuttering)
-		stuttering = max(stuttering-1, 0)
-	return stuttering
-
-/mob/living/proc/handle_silent()
-	if(silent)
-		silent = max(silent-1, 0)
-	return silent
-
-/mob/living/proc/handle_drugged()
-	if(druggy)
-		druggy = max(druggy-1, 0)
-	return druggy
-
-/mob/living/proc/handle_slurring()
-	if(slurring)
-		slurring = max(slurring-1, 0)
-	return slurring
-
-/mob/living/proc/handle_paralysed() // Currently only used by simple_animal.dm, treated as a special case in other mobs
-	if(paralysis)
-		AdjustParalysis(-1)
-	return paralysis
 
 //Check for brain worms in head.
 /mob/proc/has_brain_worms()
@@ -1076,7 +1019,7 @@ mob/proc/yank_out_object()
 		usr << "You are now facing [dir2text(facing_dir)]."
 
 /mob/proc/set_face_dir(var/newdir)
-	if(newdir == facing_dir)
+	if(!isnull(facing_dir) && newdir == facing_dir)
 		facing_dir = null
 	else if(newdir)
 		set_dir(newdir)
@@ -1135,3 +1078,23 @@ mob/proc/yank_out_object()
 	src.in_throw_mode = 1
 	if(src.throw_icon)
 		src.throw_icon.icon_state = "act_throw_on"
+
+/mob/proc/toggle_antag_pool()
+	set name = "Toggle Add-Antag Candidacy"
+	set desc = "Toggles whether or not you will be considered a candidate by an add-antag vote."
+	set category = "OOC"
+	if(isghostmind(src.mind) || isnewplayer(src))
+		if(ticker && ticker.looking_for_antags)
+			if(src.mind in ticker.antag_pool)
+				ticker.antag_pool -= src.mind
+				usr << "You have left the antag pool."
+			else
+				ticker.antag_pool += src.mind
+				usr << "You have joined the antag pool. Make sure you have the needed role set to high!"
+		else
+			usr << "The game is not currently looking for antags."
+	else
+		usr << "You must be observing or in the lobby to join the antag pool."
+
+/mob/proc/is_invisible_to(var/mob/viewer)
+	return (!alpha || !mouse_opacity || viewer.see_invisible < invisibility)

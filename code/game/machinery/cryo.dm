@@ -63,10 +63,9 @@
 	return 1
 
 /obj/machinery/atmospherics/unary/cryo_cell/relaymove(mob/user as mob)
-	if(user.stat)
-		return
-	go_out()
-	return
+	// note that relaymove will also be called for mobs outside the cell with UI open
+	if(src.occupant == user && !user.stat)
+		go_out()
 
 /obj/machinery/atmospherics/unary/cryo_cell/attack_hand(mob/user)
 	ui_interact(user)
@@ -348,6 +347,10 @@
 	put_mob(usr)
 	return
 
+/obj/machinery/atmospherics/unary/cryo_cell/return_air()
+	return air_contents
+
+//This proc literally only exists for cryo cells.
 /atom/proc/return_air_for_internal_lifeform()
 	return return_air()
 

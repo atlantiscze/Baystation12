@@ -60,9 +60,6 @@
 <A href='?src=\ref[src];make=3;dir=5'>Bent Pipe</A><BR>
 <A href='?src=\ref[src];make=6;dir=1'>Junction</A><BR>
 <A href='?src=\ref[src];make=17;dir=1'>Heat Exchanger</A><BR>
-<b>Insulated pipes:</b><BR>
-<A href='?src=\ref[src];make=11;dir=1'>Pipe</A><BR>
-<A href='?src=\ref[src];make=12;dir=5'>Bent Pipe</A><BR>
 
 "}
 ///// Z-Level stuff
@@ -109,9 +106,9 @@
 		if (unwrenched==0)
 			playsound(src.loc, 'sound/items/Ratchet.ogg', 50, 1)
 			user << "<span class='notice'>You begin to unfasten \the [src] from the floor...</span>"
-			if (do_after(user, 40))
+			if (do_after(user, 40, src))
 				user.visible_message( \
-					"<span class='notice'>[user] unfastens \the [src].</span>", \
+					"<span class='notice'>\The [user] unfastens \the [src].</span>", \
 					"<span class='notice'>You have unfastened \the [src]. Now it can be pulled somewhere else.</span>", \
 					"You hear ratchet.")
 				src.anchored = 0
@@ -122,9 +119,9 @@
 		else /*if (unwrenched==1)*/
 			playsound(src.loc, 'sound/items/Ratchet.ogg', 50, 1)
 			user << "<span class='notice'>You begin to fasten \the [src] to the floor...</span>"
-			if (do_after(user, 20))
+			if (do_after(user, 20, src))
 				user.visible_message( \
-					"<span class='notice'>[user] fastens \the [src].</span>", \
+					"<span class='notice'>\The [user] fastens \the [src].</span>", \
 					"<span class='notice'>You have fastened \the [src]. Now it can dispense pipes.</span>", \
 					"You hear ratchet.")
 				src.anchored = 1

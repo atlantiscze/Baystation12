@@ -16,8 +16,8 @@
 	disruptable = 1
 	disruptive = 0
 
-	use_power_cost = 50
-	active_power_cost = 10
+	use_power_cost = 5 KILOWATTS
+	active_power_cost = 500
 	passive_power_cost = 0
 	module_cooldown = 30
 
@@ -38,7 +38,8 @@
 	var/mob/living/carbon/human/H = holder.wearer
 
 	H << "<font color='blue'><b>You are now invisible to normal detection.</b></font>"
-	H.invisibility = INVISIBILITY_LEVEL_TWO
+	H.cloaked = TRUE
+	H.update_icons()
 
 	anim(get_turf(H), H, 'icons/effects/effects.dmi', "electricity",null,20,null)
 
@@ -52,7 +53,8 @@
 	var/mob/living/carbon/human/H = holder.wearer
 
 	H << "<span class='danger'>You are now visible.</span>"
-	H.invisibility = 0
+	H.cloaked = FALSE
+	H.update_icons()
 
 	anim(get_turf(H), H,'icons/mob/mob.dmi',,"uncloak",,H.dir)
 	anim(get_turf(H), H, 'icons/effects/effects.dmi', "electricity",null,20,null)
@@ -67,37 +69,28 @@
 	name = "teleportation module"
 	desc = "A complex, sleek-looking, hardsuit-integrated teleportation module."
 	icon_state = "teleporter"
-	use_power_cost = 40
+	use_power_cost = 25 KILOWATTS
 	redundant = 1
 	usable = 1
 	selectable = 1
-
+	module_cooldown = 60
 	engage_string = "Emergency Leap"
 
 	interface_name = "VOID-shift phase projector"
 	interface_desc = "An advanced teleportation system. It is capable of pinpoint precision or random leaps forward."
 
 /obj/item/rig_module/teleporter/proc/phase_in(var/mob/M,var/turf/T)
-
 	if(!M || !T)
 		return
-
 	holder.spark_system.start()
-	playsound(T, 'sound/effects/phasein.ogg', 25, 1)
-	playsound(T, 'sound/effects/sparks2.ogg', 50, 1)
-	anim(T,M,'icons/mob/mob.dmi',,"phasein",,M.dir)
+	M.phase_in(T)
 
 /obj/item/rig_module/teleporter/proc/phase_out(var/mob/M,var/turf/T)
-
 	if(!M || !T)
 		return
-
-	playsound(T, "sparks", 50, 1)
-	anim(T,M,'icons/mob/mob.dmi',,"phaseout",,M.dir)
+	M.phase_out(T)
 
 /obj/item/rig_module/teleporter/engage(var/atom/target, var/notify_ai)
-
-	if(!..()) return 0
 
 	var/mob/living/carbon/human/H = holder.wearer
 
@@ -109,13 +102,17 @@
 	if(target)
 		T = get_turf(target)
 	else
-		T = get_teleport_loc(get_turf(H), H, rand(5, 9))
+		T = get_teleport_loc(get_turf(H), H, 6, 1, 1, 1)
 
-	if(!T || T.density)
+	if(!T)
+		H << "<span class='warning'>No valid teleport target found.</span>"
+		return 0
+
+	if(T.density)
 		H << "<span class='warning'>You cannot teleport into solid walls.</span>"
 		return 0
 
-	if(T.z in config.admin_levels)
+	if(T.z in using_map.admin_levels)
 		H << "<span class='warning'>You cannot use your teleporter on this Z-level.</span>"
 		return 0
 
@@ -126,6 +123,8 @@
 	if(T.z != H.z || get_dist(T, get_turf(H)) > world.view)
 		H << "<span class='warning'>You cannot teleport to such a distant object.</span>"
 		return 0
+
+	if(!..()) return 0
 
 	phase_out(H,get_turf(H))
 	H.forceMove(T)
@@ -151,7 +150,7 @@
 	engage_string = "Fabricate Net"
 
 	fabrication_type = /obj/item/weapon/energy_net
-	use_power_cost = 70
+	use_power_cost = 20 KILOWATTS
 
 /obj/item/rig_module/fabricator/energy_net/engage(atom/target)
 

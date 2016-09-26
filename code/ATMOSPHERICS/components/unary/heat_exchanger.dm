@@ -5,7 +5,7 @@
 	density = 1
 
 	name = "Heat Exchanger"
-	desc = "Exchanges heat between two input gases. Setup for fast heat transfer"
+	desc = "Exchanges heat between two input gases. Setup for fast heat transfer."
 
 	var/obj/machinery/atmospherics/unary/heat_exchanger/partner = null
 	var/update_cycle
@@ -80,7 +80,7 @@
 			return 1
 		playsound(src.loc, 'sound/items/Ratchet.ogg', 50, 1)
 		user << "<span class='notice'>You begin to unfasten \the [src]...</span>"
-		if (do_after(user, 40))
+		if (do_after(user, 40, src))
 			user.visible_message( \
 				"<span class='notice'>\The [user] unfastens \the [src].</span>", \
 				"<span class='notice'>You have unfastened \the [src].</span>", \

@@ -8,16 +8,15 @@
 	//check if it doesn't require any access at all
 	if(src.check_access(null))
 		return 1
+	if(!istype(M))
+		return 0
+	return check_access_list(M.GetAccess())
 
-	var/id = M.GetIdCard()
-	if(id)
-		return check_access(id)
-	return 0
+/atom/movable/proc/GetAccess()
+	var/obj/item/weapon/card/id/id = GetIdCard()
+	return id ? id.GetAccess() : list()
 
-/obj/item/proc/GetAccess()
-	return list()
-
-/obj/proc/GetID()
+/atom/movable/proc/GetIdCard()
 	return null
 
 /obj/proc/check_access(obj/item/I)
@@ -26,7 +25,6 @@
 /obj/proc/check_access_list(var/list/L)
 	if(!req_access)		req_access = list()
 	if(!req_one_access)	req_one_access = list()
-	if(!L)	return 0
 	if(!istype(L, /list))	return 0
 	return has_access(req_access, req_one_access, L)
 
@@ -68,7 +66,7 @@
 		priv_all_access_datums = init_subtypes(/datum/access)
 		priv_all_access_datums = dd_sortedObjectList(priv_all_access_datums)
 
-	return priv_all_access_datums
+	return priv_all_access_datums.Copy()
 
 /var/list/datum/access/priv_all_access_datums_id
 /proc/get_all_access_datums_by_id()
@@ -77,7 +75,7 @@
 		for(var/datum/access/A in get_all_access_datums())
 			priv_all_access_datums_id["[A.id]"] = A
 
-	return priv_all_access_datums_id
+	return priv_all_access_datums_id.Copy()
 
 /var/list/datum/access/priv_all_access_datums_region
 /proc/get_all_access_datums_by_region()
@@ -88,7 +86,7 @@
 				priv_all_access_datums_region[A.region] = list()
 			priv_all_access_datums_region[A.region] += A
 
-	return priv_all_access_datums_region
+	return priv_all_access_datums_region.Copy()
 
 /proc/get_access_ids(var/access_types = ACCESS_TYPE_ALL)
 	var/list/L = new()
@@ -102,28 +100,28 @@
 	if(!priv_all_access)
 		priv_all_access = get_access_ids()
 
-	return priv_all_access
+	return priv_all_access.Copy()
 
 /var/list/priv_station_access
 /proc/get_all_station_access()
 	if(!priv_station_access)
 		priv_station_access = get_access_ids(ACCESS_TYPE_STATION)
 
-	return priv_station_access
+	return priv_station_access.Copy()
 
 /var/list/priv_centcom_access
 /proc/get_all_centcom_access()
 	if(!priv_centcom_access)
 		priv_centcom_access = get_access_ids(ACCESS_TYPE_CENTCOM)
 
-	return priv_centcom_access
+	return priv_centcom_access.Copy()
 
 /var/list/priv_syndicate_access
 /proc/get_all_syndicate_access()
 	if(!priv_syndicate_access)
 		priv_syndicate_access = get_access_ids(ACCESS_TYPE_SYNDICATE)
 
-	return priv_syndicate_access
+	return priv_syndicate_access.Copy()
 
 /var/list/priv_region_access
 /proc/get_region_accesses(var/code)
@@ -137,7 +135,8 @@
 				priv_region_access["[A.region]"] = list()
 			priv_region_access["[A.region]"] += A.id
 
-	return priv_region_access["[code]"]
+	var/list/region = priv_region_access["[code]"]
+	return region.Copy()
 
 /proc/get_region_accesses_name(var/code)
 	switch(code)
@@ -190,35 +189,51 @@
 		"Emergency Response Team",
 		"Emergency Response Team Leader")
 
-/mob/proc/GetIdCard()
-	return null
+/mob/observer/ghost
+	var/static/obj/item/weapon/card/id/all_access/ghost_all_access
+
+/mob/observer/ghost/GetIdCard()
+	if(!is_admin(src))
+		return
+
+	if(!ghost_all_access)
+		ghost_all_access = new()
+	return ghost_all_access
 
 /mob/living/bot/GetIdCard()
 	return botcard
 
+#define HUMAN_ID_CARDS list(get_active_hand(), wear_id, get_inactive_hand())
 /mob/living/carbon/human/GetIdCard()
-	if(wear_id)
-		var/id = wear_id.GetID()
+	for(var/item_slot in HUMAN_ID_CARDS)
+		var/obj/item/I = item_slot
+		var/obj/item/weapon/card/id = I ? I.GetIdCard() : null
 		if(id)
 			return id
-	if(get_active_hand())
-		var/obj/item/I = get_active_hand()
-		return I.GetID()
+
+/mob/living/carbon/human/GetAccess()
+	. = list()
+	for(var/item_slot in HUMAN_ID_CARDS)
+		var/obj/item/I = item_slot
+		var/obj/item/weapon/card/id = I ? I.GetIdCard() : null
+		if(id)
+			. |= id.GetAccess()
+#undef HUMAN_ID_CARDS
 
 /mob/living/silicon/GetIdCard()
 	return idcard
 
-proc/FindNameFromID(var/mob/M, var/missing_id_name = "Unknown")
+/proc/FindNameFromID(var/mob/M, var/missing_id_name = "Unknown")
 	var/obj/item/weapon/card/id/C = M.GetIdCard()
 	if(C)
 		return C.registered_name
 	return missing_id_name
 
-proc/get_all_job_icons() //For all existing HUD icons
+/proc/get_all_job_icons() //For all existing HUD icons
 	return joblist + list("Prisoner")
 
 /obj/proc/GetJobName() //Used in secHUD icon generation
-	var/obj/item/weapon/card/id/I = GetID()
+	var/obj/item/weapon/card/id/I = GetIdCard()
 
 	if(I)
 		var/job_icons = get_all_job_icons()

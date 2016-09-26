@@ -20,7 +20,7 @@
 		user << "<span class='notice'>You must stand still to feel [E] for fractures.</span>"
 	else if(E.status & ORGAN_BROKEN)
 		user << "<span class='warning'>The [E.encased ? E.encased : "bone in the [E.name]"] moves slightly when you poke it!</span>"
-		H.custom_pain("Your [E.name] hurts where it's poked.")
+		H.custom_pain("Your [E.name] hurts where it's poked.",40)
 	else
 		user << "<span class='notice'>The [E.encased ? E.encased : "bones in the [E.name]"] seem to be fine.</span>"
 
@@ -51,16 +51,22 @@
 		return
 
 	attacker.visible_message("<span class='danger'>[attacker] [pick("bent", "twisted")] [target]'s [organ.name] into a jointlock!</span>")
+
+	if(!organ.can_feel_pain())
+		return
+
 	var/armor = target.run_armor_check(target, "melee")
-	if(armor < 2)
+	if(armor < 100)
 		target << "<span class='danger'>You feel extreme pain!</span>"
-		affecting.adjustHalLoss(Clamp(0, 60-affecting.halloss, 30)) //up to 60 halloss
+
+		var/max_halloss = round(target.species.total_health * 0.8) //up to 80% of passing out
+		affecting.adjustHalLoss(Clamp(0, max_halloss - affecting.halloss, 30))
 
 /obj/item/weapon/grab/proc/attack_eye(mob/living/carbon/human/target, mob/living/carbon/human/attacker)
 	if(!istype(attacker))
 		return
 
-	var/datum/unarmed_attack/attack = attacker.get_unarmed_attack(target, "eyes")
+	var/datum/unarmed_attack/attack = attacker.get_unarmed_attack(target, BP_EYES)
 
 	if(!attack)
 		return
@@ -75,9 +81,7 @@
 		attacker << "<span class='danger'>You cannot locate any eyes on [target]!</span>"
 		return
 
-	attacker.attack_log += text("\[[time_stamp()]\] <font color='red'>Attacked [target.name]'s eyes using grab ([target.ckey])</font>")
-	target.attack_log += text("\[[time_stamp()]\] <font color='orange'>Had eyes attacked by [attacker.name]'s grab ([attacker.ckey])</font>")
-	msg_admin_attack("[key_name(attacker)] attacked [key_name(target)]'s eyes using a grab action.")
+	admin_attack_log(attacker, target, "Grab attacked the victim's eyes.", "Had their eyes grab attacked.", "attacked the eyes, using a grab action, of")
 
 	attack.handle_eye_attack(attacker, target)
 
@@ -86,28 +90,33 @@
 		return
 	if(target.lying)
 		return
-	attacker.visible_message("<span class='danger'>[attacker] thrusts \his head into [target]'s skull!</span>")
 
 	var/damage = 20
 	var/obj/item/clothing/hat = attacker.head
+	var/is_sharp = 0
 	if(istype(hat))
 		damage += hat.force * 3
+		is_sharp = hat.sharp
 
-	var/armor = target.run_armor_check("head", "melee")
-	target.apply_damage(damage, BRUTE, "head", armor)
-	attacker.apply_damage(10, BRUTE, "head", attacker.run_armor_check("head", "melee"))
+	if(is_sharp)
+		attacker.visible_message("<span class='danger'>[attacker] gores [target][istype(hat)? " with \the [hat]" : ""]!</span>")
+	else
+		attacker.visible_message("<span class='danger'>[attacker] thrusts \his head into [target]'s skull!</span>")
 
-	if(!armor && target.headcheck("head") && prob(damage))
+	var/armor = target.run_armor_check(BP_HEAD, "melee")
+	target.apply_damage(damage, BRUTE, BP_HEAD, armor, sharp=is_sharp)
+	attacker.apply_damage(10, BRUTE, BP_HEAD, attacker.run_armor_check(BP_HEAD, "melee"))
+
+	if(armor < 50 && target.headcheck(BP_HEAD) && prob(damage))
 		target.apply_effect(20, PARALYZE)
-		target.visible_message("<span class='danger'>[target] [target.species.knockout_message]</span>")
+		target.visible_message("<span class='danger'>[target] [target.species.get_knockout_message(target)]</span>")
 
 	playsound(attacker.loc, "swing_hit", 25, 1, -1)
-	attacker.attack_log += text("\[[time_stamp()]\] <font color='red'>Headbutted [target.name] ([target.ckey])</font>")
-	target.attack_log += text("\[[time_stamp()]\] <font color='orange'>Headbutted by [attacker.name] ([attacker.ckey])</font>")
-	msg_admin_attack("[key_name(attacker)] has headbutted [key_name(target)]")
+
+	admin_attack_log(attacker, target, "Headbutted their victim.", "Was headbutted.", "headbutted")
 
 	attacker.drop_from_inventory(src)
-	src.loc = null
+	src.forceMove(null)
 	qdel(src)
 	return
 
@@ -125,9 +134,13 @@
 		return
 	if(force_down)
 		attacker << "<span class='warning'>You are already pinning [target] to the ground.</span>"
+		return
+	if(size_difference(affecting, assailant) > 0)
+		attacker << "<span class='warning'>You are too small to do that!</span>"
+		return
 
 	attacker.visible_message("<span class='danger'>[attacker] starts forcing [target] to the ground!</span>")
-	if(do_after(attacker, 20) && target)
+	if(do_after(attacker, 20, progress=0) && target)
 		last_action = world.time
 		attacker.visible_message("<span class='danger'>[attacker] forces [target] to the ground!</span>")
 		apply_pinning(target, attacker)
@@ -139,27 +152,3 @@
 	step_to(attacker, target)
 	attacker.set_dir(EAST) //face the victim
 	target.set_dir(SOUTH) //face up
-
-/obj/item/weapon/grab/proc/devour(mob/target, mob/user)
-	var/can_eat
-	if((FAT in user.mutations) && issmall(target))
-		can_eat = 1
-	else
-		var/mob/living/carbon/human/H = user
-		if(istype(H) && H.species.gluttonous)
-			if(H.species.gluttonous == 2)
-				can_eat = 2
-			else if((H.mob_size > target.mob_size) && !ishuman(target) && iscarbon(target))
-				can_eat = 1
-
-	if(can_eat)
-		var/mob/living/carbon/attacker = user
-		user.visible_message("<span class='danger'>[user] is attempting to devour [target]!</span>")
-		if(can_eat == 2)
-			if(!do_mob(user, target)||!do_after(user, 30)) return
-		else
-			if(!do_mob(user, target)||!do_after(user, 100)) return
-		user.visible_message("<span class='danger'>[user] devours [target]!</span>")
-		target.loc = user
-		attacker.stomach_contents.Add(target)
-		qdel(src)

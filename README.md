@@ -1,6 +1,6 @@
 # baystation12
 
-[Website](http://baystation12.net/) - [Code](http://github.com/Baystation12/Baystation12/) - [IRC](http://baystation12.net/forums/viewtopic.php?f=12&t=5088)
+[Website](http://baystation12.net/) - [Code](http://github.com/Baystation12/Baystation12/) - [IRC](irc://irc.sorcery.net/#codershuttle)
 
 ---
 
@@ -84,7 +84,9 @@ For a basic setup, simply copy every file from config/example to config.
 
 ### SQL Setup
 
-The SQL backend for the library and stats tracking requires a MySQL server.  Your server details go in /config/dbconfig.txt, and the SQL schema is in /SQL/tgstation_schema.sql.  More detailed setup instructions arecoming soon, for now ask in our IRC channel.
+The SQL backend for the library/stats and bans requires a MySQL server.  Your server details go in config/dbconfig.txt.
+
+For initial setup and migrations refer to sql/README.md
 
 ---
 

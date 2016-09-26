@@ -43,6 +43,9 @@
 				interact()
 				return
 			edit_area()
+		if ("delete_area")
+			//skip the sanity checking, delete_area() does it anyway
+			delete_area()
 
 /obj/item/blueprints/interact()
 	var/area/A = get_area()
@@ -57,10 +60,18 @@
 <p><a href='?src=\ref[src];action=create_area'>Mark this place as new area.</a></p>
 "}
 		if (AREA_STATION)
-			text += {"
+			if (A.apc)
+				text += {"
 <p>According the blueprints, you are now in <b>\"[A.name]\"</b>.</p>
 <p>You may <a href='?src=\ref[src];action=edit_area'>
 move an amendment</a> to the drawing.</p>
+<p>You can't erase this area, because it has an APC.</p>
+"}
+			else
+				text += {"
+<p>According the blueprints, you are now in <b>\"[A.name]\"</b>.</p>
+<p>You may <a href='?src=\ref[src];action=edit_area'>
+move an amendment</a> to the drawing, or <a href='?src=\ref[src];action=delete_area'>erase part of it</a>.</p>
 "}
 		if (AREA_SPECIAL)
 			text += {"
@@ -81,22 +92,18 @@ move an amendment</a> to the drawing.</p>
 /obj/item/blueprints/proc/get_area_type(var/area/A = get_area())
 	if(istype(A, /area/space))
 		return AREA_SPACE
+
 	var/list/SPECIALS = list(
-		/area/shuttle,
-		/area/admin,
-		/area/arrival,
-		/area/centcom,
-		/area/asteroid,
-		/area/tdome,
-		/area/syndicate_station,
-		/area/wizard_station,
-		/area/prison
-		// /area/derelict //commented out, all hail derelict-rebuilders!
+		/area/shuttle
 	)
-	for (var/type in SPECIALS)
-		if ( istype(A,type) )
-			return AREA_SPECIAL
-	return AREA_STATION
+
+	if(is_type_in_list(A, SPECIALS))
+		return AREA_SPECIAL
+
+	if(A.z in using_map.station_levels)
+		return AREA_STATION
+
+	return AREA_SPECIAL
 
 /obj/item/blueprints/proc/create_area()
 	//world << "DEBUG: create_area"
@@ -160,6 +167,17 @@ move an amendment</a> to the drawing.</p>
 	usr << "<span class='notice'>You set the area '[prevname]' title to '[str]'.</span>"
 	interact()
 	return
+
+
+/obj/item/blueprints/proc/delete_area()
+	var/area/A = get_area()
+	if (get_area_type(A)!=AREA_STATION || A.apc) //let's just check this one last time, just in case
+		interact()
+		return
+	usr << "<span class='notice'>You scrub [A.name] off the blueprint.</span>"
+	log_and_message_admins("deleted area [A.name] via station blueprints.")
+	qdel(A)
+	interact()
 
 
 

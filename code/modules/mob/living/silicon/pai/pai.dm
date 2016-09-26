@@ -7,6 +7,11 @@
 	pass_flags = 1
 	mob_size = MOB_SMALL
 
+	can_pull_size = SMALL_ITEM
+	can_pull_mobs = MOB_PULL_SMALLER
+
+	idcard_type = /obj/item/weapon/card/id
+
 	var/network = "SS13"
 	var/obj/machinery/camera/current = null
 
@@ -21,7 +26,8 @@
 		"Drone" = "repairbot",
 		"Cat" = "cat",
 		"Mouse" = "mouse",
-		"Monkey" = "monkey"
+		"Monkey" = "monkey",
+		"Rabbit" = "rabbit"
 		)
 
 	var/global/list/possible_say_verbs = list(
@@ -72,6 +78,7 @@
 	var/current_pda_messaging = null
 
 /mob/living/silicon/pai/New(var/obj/item/device/paicard)
+	status_flags |= NO_ANTAG
 	src.loc = paicard
 	card = paicard
 	sradio = new(src)
@@ -91,9 +98,7 @@
 	//PDA
 	pda = new(src)
 	spawn(5)
-		pda.ownjob = "Personal Assistant"
-		pda.owner = text("[]", src)
-		pda.name = pda.owner + " (" + pda.ownjob + ")"
+		pda.set_owner_rank_job(text("[]", src), "Personal Assistant")
 		pda.toff = 1
 	..()
 
@@ -109,7 +114,7 @@
 
 
 /mob/living/silicon/pai/Stat()
-	..()
+	. = ..()
 	statpanel("Status")
 	if (src.client.statpanel == "Status")
 		show_silenced()
@@ -410,8 +415,24 @@
 /mob/living/silicon/pai/MouseDrop(atom/over_object)
 	var/mob/living/carbon/H = over_object
 	if(!istype(H) || !Adjacent(H)) return ..()
-	if(H.a_intent == "help")
+	if(H.a_intent == I_HELP)
 		get_scooped(H)
 		return
 	else
 		return ..()
+
+/mob/living/silicon/pai/verb/wipe_software()
+	set name = "Wipe Software"
+	set category = "OOC"
+	set desc = "Wipe your software. This is functionally equivalent to cryo or robotic storage, freeing up your job slot."
+
+	// Make sure people don't kill themselves accidentally
+	if(alert("WARNING: This will immediately wipe your software and ghost you, removing your character from the round permanently (similar to cryo and robotic storage). Are you entirely sure you want to do this?",
+					"Wipe Software", "No", "No", "Yes") != "Yes")
+		return
+
+	close_up()
+	visible_message("<b>[src]</b> fades away from the screen, the pAI device goes silent.")
+	card.removePersonality()
+	clear_client()
+

@@ -54,15 +54,16 @@
 	var/fire_delay = 6 	//delay after shooting before the gun can be used again
 	var/burst_delay = 2	//delay between shots, if firing in bursts
 	var/move_delay = 1
-	var/fire_sound = 'sound/weapons/Gunshot.ogg'
+	var/fire_sound = 'sound/weapons/gunshot/gunshot.ogg'
 	var/fire_sound_text = "gunshot"
-	var/recoil = 0		//screen shake
+	var/screen_shake = 0 //shouldn't be greater than 2 unless zoomed
 	var/silenced = 0
-	var/muzzle_flash = 3
 	var/accuracy = 0   //accuracy is measured in tiles. +1 accuracy means that everything is effectively one tile closer for the purpose of miss chance, -1 means the opposite. launchers are not supported, at the moment.
 	var/scoped_accuracy = null
 	var/list/burst_accuracy = list(0) //allows for different accuracies for each shot in a burst. Applied on top of accuracy
 	var/list/dispersion = list(0)
+	var/requires_two_hands
+	var/wielded_item_state
 
 	var/next_fire_time = 0
 
@@ -86,24 +87,46 @@
 	if(isnull(scoped_accuracy))
 		scoped_accuracy = accuracy
 
+/obj/item/weapon/gun/update_twohanding()
+	if(requires_two_hands)
+		var/mob/living/M = loc
+		if(istype(M))
+			if(M.can_wield_item(src) && src.is_held_twohanded(M))
+				name = "[initial(name)] (wielded)"
+			else
+				name = initial(name)
+		update_icon() // In case item_state is set somewhere else.
+	..()
+
+/obj/item/weapon/gun/update_icon()
+	if(wielded_item_state)
+		var/mob/living/M = loc
+		if(istype(M))
+			if(M.can_wield_item(src) && src.is_held_twohanded(M))
+				item_state_slots[slot_l_hand_str] = wielded_item_state
+				item_state_slots[slot_r_hand_str] = wielded_item_state
+			else
+				item_state_slots[slot_l_hand_str] = initial(item_state)
+				item_state_slots[slot_r_hand_str] = initial(item_state)
+
 //Checks whether a given mob can use the gun
 //Any checks that shouldn't result in handle_click_empty() being called if they fail should go here.
 //Otherwise, if you want handle_click_empty() to be called, check in consume_next_projectile() and return null there.
 /obj/item/weapon/gun/proc/special_check(var/mob/user)
+
 	if(!istype(user, /mob/living))
 		return 0
 	if(!user.IsAdvancedToolUser())
 		return 0
 
 	var/mob/living/M = user
-
 	if(HULK in M.mutations)
 		M << "<span class='danger'>Your fingers are much too large for the trigger guard!</span>"
 		return 0
 	if((CLUMSY in M.mutations) && prob(40)) //Clumsy handling
 		var/obj/P = consume_next_projectile()
 		if(P)
-			if(process_projectile(P, user, user, pick("l_foot", "r_foot")))
+			if(process_projectile(P, user, user, pick(BP_L_FOOT, BP_R_FOOT)))
 				handle_post_fire(user, user)
 				user.visible_message(
 					"<span class='danger'>\The [user] shoots \himself in the foot with \the [src]!</span>",
@@ -135,7 +158,7 @@
 		Fire(A,user,params) //Otherwise, fire normally.
 
 /obj/item/weapon/gun/attack(atom/A, mob/living/user, def_zone)
-	if (A == user && user.zone_sel.selecting == "mouth" && !mouthshoot)
+	if (A == user && user.zone_sel.selecting == BP_MOUTH && !mouthshoot)
 		handle_suicide(user)
 	else if(user.a_intent == I_HURT) //point blank shooting
 		Fire(A, user, pointblank=1)
@@ -144,6 +167,7 @@
 
 /obj/item/weapon/gun/proc/Fire(atom/target, mob/living/user, clickparams, pointblank=0, reflex=0)
 	if(!user || !target) return
+	if(target.z != user.z) return
 
 	add_fingerprint(user)
 
@@ -160,6 +184,8 @@
 	user.setMoveCooldown(shoot_time) //no moving while shooting either
 	next_fire_time = world.time + shoot_time
 
+	var/held_twohanded = (user.can_wield_item(src) && src.is_held_twohanded(user))
+
 	//actually attempt to shoot
 	var/turf/targloc = get_turf(target) //cache this in case target gets deleted during shooting, e.g. if it was a securitron that got destroyed.
 	for(var/i in 1 to burst)
@@ -168,9 +194,7 @@
 			handle_click_empty(user)
 			break
 
-		var/acc = burst_accuracy[min(i, burst_accuracy.len)]
-		var/disp = dispersion[min(i, dispersion.len)]
-		process_accuracy(projectile, user, target, acc, disp)
+		process_accuracy(projectile, user, target, i, held_twohanded)
 
 		if(pointblank)
 			process_point_blank(projectile, user, target)
@@ -186,15 +210,10 @@
 			target = targloc
 			pointblank = 0
 
-	update_held_icon()
-
 	//update timing
 	user.setClickCooldown(DEFAULT_QUICK_COOLDOWN)
 	user.setMoveCooldown(move_delay)
 	next_fire_time = world.time + fire_delay
-
-	if(muzzle_flash)
-		set_light(0)
 
 //obtains the next projectile to fire
 /obj/item/weapon/gun/proc/consume_next_projectile()
@@ -218,11 +237,7 @@
 
 //called after successfully firing
 /obj/item/weapon/gun/proc/handle_post_fire(mob/user, atom/target, var/pointblank=0, var/reflex=0)
-	if(silenced)
-		playsound(user, fire_sound, 10, 1)
-	else
-		playsound(user, fire_sound, 50, 1)
-
+	if(!silenced)
 		if(reflex)
 			user.visible_message(
 				"<span class='reflex_shoot'><b>\The [user] fires \the [src][pointblank ? " point blank at \the [target]":""] by reflex!</b></span>",
@@ -236,12 +251,33 @@
 				"You hear a [fire_sound_text]!"
 				)
 
-		if(muzzle_flash)
-			set_light(muzzle_flash)
+	if(requires_two_hands)
+		if(!src.is_held_twohanded(user))
+			switch(requires_two_hands)
+				if(1)
+					if(prob(50)) //don't need to tell them every single time
+						user << "<span class='warning'>Your aim wavers slightly.</span>"
+				if(2)
+					user << "<span class='warning'>Your aim wavers as you fire \the [src] with just one hand.</span>"
+				if(3)
+					user << "<span class='warning'>You have trouble keeping \the [src] on target with just one hand.</span>"
+				if(4 to INFINITY)
+					user << "<span class='warning'>You struggle to keep \the [src] on target with just one hand!</span>"
+		else if(!user.can_wield_item(src))
+			switch(requires_two_hands)
+				if(1)
+					if(prob(50)) //don't need to tell them every single time
+						user << "<span class='warning'>Your aim wavers slightly.</span>"
+				if(2)
+					user << "<span class='warning'>Your aim wavers as you try to hold \the [src] steady.</span>"
+				if(3)
+					user << "<span class='warning'>You have trouble holding \the [src] steady.</span>"
+				if(4 to INFINITY)
+					user << "<span class='warning'>You struggle to hold \the [src] steady!</span>"
 
-	if(recoil)
+	if(screen_shake)
 		spawn()
-			shake_camera(user, recoil+1, recoil)
+			shake_camera(user, screen_shake+1, screen_shake)
 	update_icon()
 
 
@@ -266,14 +302,22 @@
 				damage_mult = 1.5
 	P.damage *= damage_mult
 
-/obj/item/weapon/gun/proc/process_accuracy(obj/projectile, mob/user, atom/target, acc_mod, dispersion)
+/obj/item/weapon/gun/proc/process_accuracy(obj/projectile, mob/user, atom/target, var/burst, var/held_twohanded)
 	var/obj/item/projectile/P = projectile
 	if(!istype(P))
 		return //default behaviour only applies to true projectiles
 
+	var/acc_mod = burst_accuracy[min(burst, burst_accuracy.len)]
+	var/disp_mod = dispersion[min(burst, dispersion.len)]
+
+	if(requires_two_hands)
+		if(!held_twohanded)
+			acc_mod += -ceil(requires_two_hands/2)
+			disp_mod += requires_two_hands*0.5 //dispersion per point of two-handedness
+
 	//Accuracy modifiers
 	P.accuracy = accuracy + acc_mod
-	P.dispersion = dispersion
+	P.dispersion = disp_mod
 
 	//accuracy bonus from aiming
 	if (aim_targets && (target in aim_targets))
@@ -303,7 +347,16 @@
 			y_offset = rand(-1,1)
 			x_offset = rand(-1,1)
 
-	return !P.launch_from_gun(target, user, src, target_zone, x_offset, y_offset)
+	var/launched = !P.launch_from_gun(target, user, src, target_zone, x_offset, y_offset)
+
+	if(launched)
+		var/shot_sound = P.fire_sound? P.fire_sound : fire_sound
+		if(silenced)
+			playsound(user, shot_sound, 10, 1)
+		else
+			playsound(user, shot_sound, 50, 1)
+
+	return launched
 
 //Suicide handling.
 /obj/item/weapon/gun/var/mouthshoot = 0 //To stop people from suiciding twice... >.>
@@ -313,18 +366,19 @@
 	var/mob/living/carbon/human/M = user
 
 	mouthshoot = 1
-	M.visible_message("\red [user] sticks their gun in their mouth, ready to pull the trigger...")
-	if(!do_after(user, 40))
-		M.visible_message("\blue [user] decided life was worth living")
+	M.visible_message("<span class='danger'>[user] sticks their gun in their mouth, ready to pull the trigger...</span>")
+	if(!do_after(user, 40, progress=0))
+		M.visible_message("<span class='notice'>[user] decided life was worth living</span>")
 		mouthshoot = 0
 		return
 	var/obj/item/projectile/in_chamber = consume_next_projectile()
 	if (istype(in_chamber))
 		user.visible_message("<span class = 'warning'>[user] pulls the trigger.</span>")
+		var/shot_sound = in_chamber.fire_sound? in_chamber.fire_sound : fire_sound
 		if(silenced)
-			playsound(user, fire_sound, 10, 1)
+			playsound(user, shot_sound, 10, 1)
 		else
-			playsound(user, fire_sound, 50, 1)
+			playsound(user, shot_sound, 50, 1)
 		if(istype(in_chamber, /obj/item/projectile/beam/lastertag))
 			user.show_message("<span class = 'warning'>You feel rather silly, trying to commit suicide with a toy.</span>")
 			mouthshoot = 0
@@ -333,7 +387,7 @@
 		in_chamber.on_hit(M)
 		if (in_chamber.damage_type != HALLOSS)
 			log_and_message_admins("[key_name(user)] commited suicide using \a [src]")
-			user.apply_damage(in_chamber.damage*2.5, in_chamber.damage_type, "head", used_weapon = "Point blank shot in the mouth with \a [in_chamber]", sharp=1)
+			user.apply_damage(in_chamber.damage*2.5, in_chamber.damage_type, BP_HEAD, used_weapon = "Point blank shot in the mouth with \a [in_chamber]", sharp=1)
 			user.death()
 		else
 			user << "<span class = 'notice'>Ow...</span>"
@@ -346,25 +400,25 @@
 		mouthshoot = 0
 		return
 
-/obj/item/weapon/gun/proc/toggle_scope(var/zoom_amount=2.0)
+/obj/item/weapon/gun/proc/toggle_scope(mob/user, var/zoom_amount=2.0)
 	//looking through a scope limits your periphereal vision
 	//still, increase the view size by a tiny amount so that sniping isn't too restricted to NSEW
 	var/zoom_offset = round(world.view * zoom_amount)
 	var/view_size = round(world.view + zoom_amount)
 	var/scoped_accuracy_mod = zoom_offset
 
-	zoom(zoom_offset, view_size)
+	zoom(user, zoom_offset, view_size)
 	if(zoom)
 		accuracy = scoped_accuracy + scoped_accuracy_mod
-		if(recoil)
-			recoil = round(recoil*zoom_amount+1) //recoil is worse when looking through a scope
+		if(screen_shake)
+			screen_shake = round(screen_shake*zoom_amount+1) //screen shake is worse when looking through a scope
 
-//make sure accuracy and recoil are reset regardless of how the item is unzoomed.
+//make sure accuracy and screen_shake are reset regardless of how the item is unzoomed.
 /obj/item/weapon/gun/zoom()
 	..()
 	if(!zoom)
 		accuracy = initial(accuracy)
-		recoil = initial(recoil)
+		screen_shake = initial(screen_shake)
 
 /obj/item/weapon/gun/examine(mob/user)
 	..()

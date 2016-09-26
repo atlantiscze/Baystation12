@@ -9,7 +9,8 @@
 	requires_ntnet = 1
 	requires_ntnet_feature = NTNET_SOFTWAREDOWNLOAD
 	available_on_ntnet = 0
-	nanomodule_path = /datum/nano_module/computer_ntnetdownload/
+	nanomodule_path = /datum/nano_module/program/computer_ntnetdownload/
+	ui_header = "downloader_finished.gif"
 	var/datum/computer_file/program/downloaded_file = null
 	var/hacked_download = 0
 	var/download_completion = 0 //GQ of downloaded data.
@@ -32,6 +33,8 @@
 	if(!computer || !computer.hard_drive || !computer.hard_drive.try_store_file(PRG))
 		return 0
 
+	ui_header = "downloader_running.gif"
+
 	if(PRG in ntnet_global.available_station_software)
 		generate_network_log("Began downloading file [PRG.filename].[PRG.filetype] from NTNet Software Repository.")
 		hacked_download = 0
@@ -50,6 +53,7 @@
 	generate_network_log("Aborted download of file [hacked_download ? "**ENCRYPTED**" : downloaded_file.filename].[downloaded_file.filetype].")
 	downloaded_file = null
 	download_completion = 0
+	ui_header = "downloader_finished.gif"
 
 /datum/computer_file/program/ntnetdownload/proc/complete_file_download()
 	if(!downloaded_file)
@@ -60,6 +64,7 @@
 		downloaderror = "I/O ERROR - Unable to save file. Check whether you have enough free space on your hard drive and whether your hard drive is properly connected. If the issue persists contact your system administrator for assistance."
 	downloaded_file = null
 	download_completion = 0
+	ui_header = "downloader_finished.gif"
 
 /datum/computer_file/program/ntnetdownload/process_tick()
 	if(!downloaded_file)
@@ -84,22 +89,21 @@
 	if(href_list["PRG_downloadfile"])
 		if(!downloaded_file)
 			begin_file_download(href_list["PRG_downloadfile"])
-		return
+		return 1
 	if(href_list["PRG_reseterror"])
 		if(downloaderror)
 			download_completion = 0
 			download_netspeed = 0
 			downloaded_file = null
 			downloaderror = ""
-		return
+		return 1
 	return 0
 
-
-/datum/nano_module/computer_ntnetdownload
+/datum/nano_module/program/computer_ntnetdownload
 	name = "Network Downloader"
 	var/obj/item/modular_computer/my_computer = null
 
-/datum/nano_module/computer_ntnetdownload/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/datum/topic_state/state = default_state)
+/datum/nano_module/program/computer_ntnetdownload/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/datum/topic_state/state = default_state)
 	if(program)
 		my_computer = program.computer
 
@@ -129,7 +133,7 @@
 		var/list/all_entries[0]
 		for(var/datum/computer_file/program/P in ntnet_global.available_station_software)
 			// Only those programs our user can run will show in the list
-			if(!P.can_run(user))
+			if(!P.can_run(user) && P.requires_access_to_download)
 				continue
 			all_entries.Add(list(list(
 			"filename" = P.filename,

@@ -259,9 +259,6 @@
 	if(H.stat == DEAD) // He's dead, Jim
 		return null
 
-	if(H.suiciding)
-		return null
-
 	if(H in ignored)
 		return null
 
@@ -286,10 +283,6 @@
 
 	if((H.getToxLoss() >= heal_threshold) && (!H.reagents.has_reagent(treatment_tox)))
 		return treatment_tox
-
-	for(var/datum/disease/D in H.viruses)
-		if (!H.reagents.has_reagent(treatment_virus))
-			return treatment_virus // STOP DISEASE FOREVER
 
 /* Construction */
 
@@ -361,5 +354,6 @@
 					var/mob/living/bot/medbot/S = new /mob/living/bot/medbot(T)
 					S.skin = skin
 					S.name = created_name
+					S.update_icons() // apply the skin
 					user.drop_from_inventory(src)
 					qdel(src)

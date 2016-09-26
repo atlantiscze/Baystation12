@@ -20,73 +20,80 @@
 /proc/testing(msg)
 	world.log << "## TESTING: [msg][log_end]"
 
+/proc/game_log(category, text)
+	diary << "\[[time_stamp()]] [game_id] [category]: [text][log_end]"
+
 /proc/log_admin(text)
 	admin_log.Add(text)
 	if (config.log_admin)
-		diary << "\[[time_stamp()]]ADMIN: [text][log_end]"
+		game_log("ADMIN", text)
 
 /proc/log_debug(text)
 	if (config.log_debug)
-		diary << "\[[time_stamp()]]DEBUG: [text][log_end]"
+		game_log("DEBUG", text)
 
 	for(var/client/C in admins)
-		if(C.prefs.toggles & CHAT_DEBUGLOGS)
+		if(C.is_preference_enabled(/datum/client_preference/debug/show_debug_logs))
 			C << "DEBUG: [text]"
 
 /proc/log_game(text)
 	if (config.log_game)
-		diary << "\[[time_stamp()]]GAME: [text][log_end]"
+		game_log("GAME", text)
 
 /proc/log_vote(text)
 	if (config.log_vote)
-		diary << "\[[time_stamp()]]VOTE: [text][log_end]"
+		game_log("VOTE", text)
 
 /proc/log_access(text)
 	if (config.log_access)
-		diary << "\[[time_stamp()]]ACCESS: [text][log_end]"
+		game_log("ACCESS", text)
 
 /proc/log_say(text)
 	if (config.log_say)
-		diary << "\[[time_stamp()]]SAY: [text][log_end]"
+		game_log("SAY", text)
 
 /proc/log_ooc(text)
 	if (config.log_ooc)
-		diary << "\[[time_stamp()]]OOC: [text][log_end]"
+		game_log("OOC", text)
 
 /proc/log_whisper(text)
 	if (config.log_whisper)
-		diary << "\[[time_stamp()]]WHISPER: [text][log_end]"
+		game_log("WHISPER", text)
 
 /proc/log_emote(text)
 	if (config.log_emote)
-		diary << "\[[time_stamp()]]EMOTE: [text][log_end]"
+		game_log("EMOTE", text)
 
 /proc/log_attack(text)
 	if (config.log_attack)
-		diary << "\[[time_stamp()]]ATTACK: [text][log_end]" //Seperate attack logs? Why?  FOR THE GLORY OF SATAN!
+		game_log("ATTACK", text)
 
 /proc/log_adminsay(text)
 	if (config.log_adminchat)
-		diary << "\[[time_stamp()]]ADMINSAY: [text][log_end]"
+		game_log("ADMINSAY", text)
 
 /proc/log_adminwarn(text)
 	if (config.log_adminwarn)
-		diary << "\[[time_stamp()]]ADMINWARN: [text][log_end]"
+		game_log("ADMINWARN", text)
 
 /proc/log_pda(text)
 	if (config.log_pda)
-		diary << "\[[time_stamp()]]PDA: [text][log_end]"
+		game_log("PDA", text)
 
 /proc/log_to_dd(text)
 	world.log << text //this comes before the config check because it can't possibly runtime
 	if(config.log_world_output)
-		diary << "\[[time_stamp()]]DD_OUTPUT: [text][log_end]"
+		game_log("DD_OUTPUT", text)
 
 /proc/log_misc(text)
-	diary << "\[[time_stamp()]]MISC: [text][log_end]"
+	game_log("MISC", text)
+
+/proc/log_unit_test(text)
+	world.log << "## UNIT_TEST ##: [text]"
+	log_debug(text)
 
 //pretty print a direction bitflag, can be useful for debugging.
-/proc/print_dir(var/dir)
+/proc/dir_text(var/dir)
 	var/list/comps = list()
 	if(dir & NORTH) comps += "NORTH"
 	if(dir & SOUTH) comps += "SOUTH"
@@ -130,10 +137,7 @@
 		if(include_link && C)
 			. += "<a href='?priv_msg=\ref[C]'>"
 
-		if(C && C.holder && C.holder.fakekey && !include_name)
-			. += "Administrator"
-		else
-			. += key
+		. += key
 
 		if(include_link)
 			if(C)	. += "</a>"
@@ -159,3 +163,25 @@
 
 /proc/key_name_admin(var/whom, var/include_name = 1)
 	return key_name(whom, 1, include_name)
+
+// Helper procs for building detailed log lines
+/datum/proc/get_log_info_line()
+	return "[src] ([type])"
+
+/area/get_log_info_line()
+	return "[..()] ([isnum(z) ? "[x],[y],[z]" : "0,0,0"])"
+
+/turf/get_log_info_line()
+	return "[..()] ([x],[y],[z]) ([loc ? loc.type : "NULL"])"
+
+/atom/movable/get_log_info_line()
+	var/turf/t = get_turf(src)
+	return "[..()] ([t ? t : "NULL"]) ([t ? "[t.x],[t.y],[t.z]" : "0,0,0"]) ([t ? t.type : "NULL"])"
+
+/mob/get_log_info_line()
+	return ckey ? "[..()] ([ckey])" : ..()
+
+/proc/log_info_line(var/datum/d)
+	if(!istype(d))
+		return
+	return d.get_log_info_line()

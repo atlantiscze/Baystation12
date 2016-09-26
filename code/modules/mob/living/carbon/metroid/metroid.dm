@@ -49,6 +49,9 @@
 	var/SStun = 0 // NPC stun variable. Used to calm them down when they are attacked while feeding, or they will immediately re-attach
 	var/Discipline = 0 // if a slime has been hit with a freeze gun, or wrestled/attacked off a human, they become disciplined and don't attack anymore for a while. The part about freeze gun is a lie
 
+	var/hurt_temperature = T0C-50 // slime keeps taking damage when its bodytemperature is below this
+	var/die_temperature = 50 // slime dies instantly when its bodytemperature is below this
+
 	///////////TIME FOR SUBSPECIES
 
 	var/colour = "grey"
@@ -76,7 +79,7 @@
 	if (bodytemperature >= 330.23) // 135 F
 		return -1	// slimes become supercharged at high temperatures
 
-	var/tally = 0
+	var/tally = ..()
 
 	var/health_deficiency = (maxHealth - health)
 	if(health_deficiency >= 30) tally += (health_deficiency / 25)
@@ -136,11 +139,11 @@
 
 	..()
 
-/mob/living/carbon/slime/Process_Spacemove()
-	return 2
+/mob/living/carbon/slime/Allow_Spacemove()
+	return 1
 
 /mob/living/carbon/slime/Stat()
-	..()
+	. = ..()
 
 	statpanel("Status")
 	stat(null, "Health: [round((health / maxHealth) * 100)]%")
@@ -378,8 +381,3 @@
 			powerlevel = 10
 			adjustToxLoss(-10)
 	nutrition = max(nutrition, get_max_nutrition())
-
-/mob/living/carbon/slime/cannot_use_vents()
-	if(Victim)
-		return "You cannot ventcrawl while feeding."
-	..()

@@ -32,6 +32,7 @@
 	var/active                          // Basic module status
 	var/disruptable                     // Will deactivate if some other powers are used.
 
+	// Now in joules/watts!
 	var/use_power_cost = 0              // Power used when single-use ability called.
 	var/active_power_cost = 0           // Power used when turned on.
 	var/passive_power_cost = 0          // Power used when turned off.
@@ -74,7 +75,7 @@
 
 		user << "You start mending the damaged portions of \the [src]..."
 
-		if(!do_after(user,30) || !W || !src)
+		if(!do_after(user,30,src) || !W || !src)
 			return
 
 		var/obj/item/stack/nanopaste/paste = W
@@ -99,7 +100,7 @@
 			return
 
 		user << "You start mending the damaged portions of \the [src]..."
-		if(!do_after(user,30) || !W || !src)
+		if(!do_after(user,30,src) || !W || !src)
 			return
 
 		damage = 1

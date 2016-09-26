@@ -78,15 +78,6 @@
 	if(icon_keyboard)
 		overlays += image(icon, icon_keyboard, overlay_layer)
 
-/obj/machinery/computer/power_change()
-	..()
-	update_icon()
-	if(stat & NOPOWER)
-		set_light(0)
-	else
-		set_light(light_range_on, light_power_on)
-
-
 /obj/machinery/computer/proc/set_broken()
 	stat |= BROKEN
 	update_icon()
@@ -99,7 +90,7 @@
 /obj/machinery/computer/attackby(I as obj, user as mob)
 	if(istype(I, /obj/item/weapon/screwdriver) && circuit)
 		playsound(src.loc, 'sound/items/Screwdriver.ogg', 50, 1)
-		if(do_after(user, 20))
+		if(do_after(user, 20, src))
 			var/obj/structure/computerframe/A = new /obj/structure/computerframe( src.loc )
 			var/obj/item/weapon/circuitboard/M = new circuit( A )
 			A.circuit = M

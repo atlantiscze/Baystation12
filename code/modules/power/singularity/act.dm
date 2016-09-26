@@ -3,7 +3,7 @@
 /atom/proc/singularity_act()
 	return
 
-/atom/proc/singularity_pull()
+/atom/proc/singularity_pull(S, current_size)
 	return
 
 /mob/living/singularity_act()
@@ -11,30 +11,20 @@
 	gib()
 	return 20
 
-/mob/living/singularity_pull(S)
+/mob/living/singularity_pull(S, current_size)
 	step_towards(src, S)
-
-/mob/living/carbon/human/singularity_act()
-	var/gain = 20
-	if(mind)
-		if((mind.assigned_role == "Station Engineer") || (mind.assigned_role == "Chief Engineer"))
-			gain = 100
-		if(mind.assigned_role == "Assistant")
-			gain = rand(0, 300)
-	investigate_log(I_SINGULO,"has been consumed by a singularity", I_SINGULO)
-	gib()
-	return gain
+	apply_effect(current_size * 3, IRRADIATE, blocked = getarmor(null, "rad"))
 
 /mob/living/carbon/human/singularity_pull(S, current_size)
 	if(current_size >= STAGE_THREE)
 		var/list/handlist = list(l_hand, r_hand)
 		for(var/obj/item/hand in handlist)
-			if(prob(current_size*5) && hand.w_class >= ((11-current_size)/2) && u_equip(hand))
-				step_towards(hand, src)
-				src << "<span class = 'warning'>The [S] pulls \the [hand] from your grip!</span>"
-	apply_effect(current_size * 3, IRRADIATE)
-	if(shoes)
-		if(shoes.item_flags & NOSLIP) return 0
+			if(prob(current_size*5) && hand.w_class >= ((11-current_size)/2) && unEquip(hand))
+				step_towards(hand, S)
+				src << "<span class = 'warning'>\The [S] pulls \the [hand] from your grip!</span>"
+		if(!lying && (!shoes || !(shoes.item_flags & NOSLIP)) && (!species || !(species.flags & NOSLIP)) && prob(current_size*5))
+			src << "<span class='danger'>A strong gravitational force slams you to the ground!</span>"
+			Weaken(current_size)
 	..()
 
 /obj/singularity_act()
@@ -45,12 +35,8 @@
 		return 2
 
 /obj/singularity_pull(S, current_size)
-	if(simulated)
-		if(anchored)
-			if(current_size >= STAGE_FIVE)
-				step_towards(src, S)
-		else
-			step_towards(src, S)
+	if(simulated && !anchored)
+		step_towards(src, S)
 
 /obj/effect/beam/singularity_pull()
 	return
@@ -59,21 +45,24 @@
 	return
 
 /obj/item/singularity_pull(S, current_size)
-	spawn(0) //this is needed or multiple items will be thrown sequentially and not simultaneously
-		if(current_size >= STAGE_FOUR)
-			//throw_at(S, 14, 3)
-			step_towards(src,S)
-			sleep(1)
-			step_towards(src,S)
-		else if(current_size > STAGE_ONE)
-			step_towards(src,S)
-		else ..()
+	set waitfor = 0
+	if(anchored)
+		return
+	sleep(0) //this is needed or multiple items will be thrown sequentially and not simultaneously
+	if(current_size >= STAGE_FOUR)
+		//throw_at(S, 14, 3)
+		step_towards(src,S)
+		sleep(1)
+		step_towards(src,S)
+	else if(current_size > STAGE_ONE)
+		step_towards(src,S)
+	else ..()
 
 /obj/machinery/atmospherics/pipe/singularity_pull()
 	return
 
 /obj/machinery/power/supermatter/shard/singularity_act()
-	src.loc = null
+	src.forceMove(null)
 	qdel(src)
 	return 5000
 
@@ -88,7 +77,7 @@
 	SetUniversalState(/datum/universal_state/supermatter_cascade)
 	log_admin("New super singularity made by eating a SM crystal [prints]. Last touched by [src.fingerprintslast].")
 	message_admins("New super singularity made by eating a SM crystal [prints]. Last touched by [src.fingerprintslast].")
-	src.loc = null
+	src.forceMove(null)
 	qdel(src)
 	return 50000
 
@@ -110,21 +99,6 @@
 	ChangeTurf(get_base_turf_by_area(src))
 	return 2
 
-/turf/simulated/wall/singularity_pull(S, current_size)
-
-	if(!reinf_material)
-		if(current_size >= STAGE_FIVE)
-			if(prob(75))
-				dismantle_wall()
-			return
-		if(current_size == STAGE_FOUR)
-			if(prob(30))
-				dismantle_wall()
-	else
-		if(current_size >= STAGE_FIVE)
-			if(prob(30))
-				dismantle_wall()
-
 /turf/space/singularity_act()
 	return
 
@@ -134,10 +108,7 @@
 /atom/proc/singuloCanEat()
 	return 1
 
-/mob/dead/singuloCanEat()
-	return 0
-
-/mob/eye/singuloCanEat()
+/mob/observer/singuloCanEat()
 	return 0
 
 /mob/new_player/singuloCanEat()

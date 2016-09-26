@@ -214,7 +214,10 @@
 
 	var/list/mobs = sortmobs()
 	var/i = 1
-	for(var/mob/M in mobs)
+	for(var/entry in mobs)
+		var/mob/M = entry
+		if(!istype(M))
+			continue
 		if(M.ckey)
 
 			var/color = "#e6e6e6"
@@ -228,7 +231,8 @@
 
 				if(iscarbon(M)) //Carbon stuff
 					if(ishuman(M))
-						M_job = M.job
+						var/mob/living/carbon/human/H = M
+						M_job = H.job
 					else if(isslime(M))
 						M_job = "slime"
 					else if(issmall(M))
@@ -260,8 +264,10 @@
 			else if(istype(M,/mob/new_player))
 				M_job = "New player"
 
-			else if(isobserver(M))
+			else if(isghost(M))
 				M_job = "Ghost"
+			else
+				M_job = "Unknown ([M.type])"
 
 			M_job = replacetext(M_job, "'", "")
 			M_job = replacetext(M_job, "\"", "")
@@ -290,7 +296,7 @@
 						<a id='link[i]'
 						onmouseover='expand("item[i]","[M_job]","[M_name]","[M_rname]","--unused--","[M_key]","[M.lastKnownIP]",[is_antagonist],"\ref[M]")'
 						>
-						<span id='search><b>[i]'>[M_name] - [M_rname] - [M_key] ([M_job])</b></span>
+						<span id='search[i]'><b>[M_name] - [M_rname] - [M_key] ([M_job])</b></span>
 						</a>
 						<br><span id='item[i]'></span>
 					</td>
@@ -340,7 +346,7 @@
 			dat += "<td>pAI</td>"
 		else if(istype(M, /mob/new_player))
 			dat += "<td>New Player</td>"
-		else if(isobserver(M))
+		else if(isghost(M))
 			dat += "<td>Ghost</td>"
 		else if(issmall(M))
 			dat += "<td>Monkey</td>"
@@ -392,22 +398,15 @@
 	if (ticker && ticker.current_state >= GAME_STATE_PLAYING)
 		var/dat = "<html><head><title>Round Status</title></head><body><h1><B>Round Status</B></h1>"
 		dat += "Current Game Mode: <B>[ticker.mode.name]</B><BR>"
-		dat += "Round Duration: <B>[round(world.time / 36000)]:[add_zero(world.time / 600 % 60, 2)]:[world.time / 100 % 6][world.time / 100 % 10]</B><BR>"
-		dat += "<B>Emergency shuttle</B><BR>"
-		if (!emergency_shuttle.online())
-			dat += "<a href='?src=\ref[src];call_shuttle=1'>Call Shuttle</a><br>"
+		dat += "Round Duration: <B>[roundduration2text()]</B><BR>"
+		dat += "<B>Evacuation</B><BR>"
+		if (evacuation_controller.is_idle())
+			dat += "<a href='?src=\ref[src];call_shuttle=1'>Call Evacuation</a><br>"
 		else
-			if (emergency_shuttle.wait_for_launch)
-				var/timeleft = emergency_shuttle.estimate_launch_time()
-				dat += "ETL: <a href='?src=\ref[src];edit_shuttle_time=1'>[(timeleft / 60) % 60]:[add_zero(num2text(timeleft % 60), 2)]</a><BR>"
-
-			else if (emergency_shuttle.shuttle.has_arrive_time())
-				var/timeleft = emergency_shuttle.estimate_arrival_time()
-				dat += "ETA: <a href='?src=\ref[src];edit_shuttle_time=1'>[(timeleft / 60) % 60]:[add_zero(num2text(timeleft % 60), 2)]</a><BR>"
+			var/timeleft = evacuation_controller.get_eta()
+			if (evacuation_controller.waiting_to_leave())
+				dat += "ETA: [(timeleft / 60) % 60]:[add_zero(num2text(timeleft % 60), 2)]<BR>"
 				dat += "<a href='?src=\ref[src];call_shuttle=2'>Send Back</a><br>"
-
-			if (emergency_shuttle.shuttle.moving_status == SHUTTLE_WARMUP)
-				dat += "Launching now..."
 
 		dat += "<a href='?src=\ref[src];delay_round_end=1'>[ticker.delay_end ? "End Round Normally" : "Delay Round End"]</a><br>"
 		dat += "<hr>"

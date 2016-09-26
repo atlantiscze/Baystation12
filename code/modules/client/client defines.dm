@@ -6,8 +6,6 @@
 	var/datum/admins/deadmin_holder = null
 	var/buildmode		= 0
 
-	var/last_message	= "" //Contains the last message sent by this client - used to protect against copy-paste spamming.
-	var/last_message_count = 0 //contins a number of how many times a message identical to last_message was sent.
 
 		/////////
 		//OTHER//
@@ -29,14 +27,13 @@
 		////////////
 		//SECURITY//
 		////////////
-	var/next_allowed_topic_time = 10
 	// comment out the line below when debugging locally to enable the options & messages menu
 	//control_freak = 1
 
 	var/received_irc_pm = -99999
 	var/irc_admin			//IRC admin that spoke with them last.
 	var/mute_irc = 0
-
+	var/warned_about_multikeying = 0	// Prevents people from being spammed about multikeying every time their mob changes.
 
 		////////////////////////////////////
 		//things that require the database//
@@ -46,3 +43,5 @@
 	var/related_accounts_cid = "Requires database"	//So admins know why it isn't working - Used to determine what other accounts previously logged in from this computer id
 
 	preload_rsc = 0 // This is 0 so we can set it to an URL once the player logs in and have them download the resources from a different server.
+	var/global/obj/screen/click_catcher/void
+

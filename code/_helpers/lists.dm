@@ -11,31 +11,11 @@
 
 //Returns a list in plain english as a string
 /proc/english_list(var/list/input, nothing_text = "nothing", and_text = " and ", comma_text = ", ", final_comma_text = "" )
-	var/total = input.len
-	if (!total)
-		return "[nothing_text]"
-	else if (total == 1)
-		return "[input[1]]"
-	else if (total == 2)
-		return "[input[1]][and_text][input[2]]"
-	else
-		var/output = ""
-		var/index = 1
-		while (index < total)
-			if (index == total - 1)
-				comma_text = final_comma_text
-
-			output += "[input[index]][comma_text]"
-			index++
-
-		return "[output][and_text][input[index]]"
-
-
-/proc/ConvertReqString2List(var/list/source_list)
-	var/list/temp_list = params2list(source_list)
-	for(var/O in temp_list)
-		temp_list[O] = text2num(temp_list[O])
-	return temp_list
+	switch(input.len)
+		if(0) return nothing_text
+		if(1) return "[input[1]]"
+		if(2) return "[input[1]][and_text][input[2]]"
+		else  return "[jointext(input, comma_text, 1, -1)][final_comma_text][and_text][input[input.len]]"
 
 //Returns list element or null. Should prevent "index out of bounds" error.
 proc/listgetindex(var/list/list,index)
@@ -46,11 +26,6 @@ proc/listgetindex(var/list/list,index)
 		else if(index in list)
 			return list[index]
 	return
-
-proc/islist(list/list)
-	if(istype(list))
-		return 1
-	return 0
 
 //Return either pick(list) or null if list is not of type /list or is empty
 proc/safepick(list/list)
@@ -68,6 +43,13 @@ proc/isemptylist(list/list)
 /proc/is_type_in_list(var/atom/A, var/list/L)
 	for(var/type in L)
 		if(istype(A, type))
+			return 1
+	return 0
+
+//Checks for specific paths in a list
+/proc/is_path_in_list(var/path, var/list/L)
+	for(var/type in L)
+		if(ispath(path, type))
 			return 1
 	return 0
 
@@ -219,6 +201,8 @@ proc/listclearnulls(list/list)
 /proc/sortAtom(var/list/atom/L, var/order = 1)
 	if(isnull(L) || L.len < 2)
 		return L
+	if(null in L)	// Cannot sort lists containing null entries.
+		return L
 	var/middle = L.len / 2 + 1
 	return mergeAtoms(sortAtom(L.Copy(0,middle)), sortAtom(L.Copy(middle)), order)
 
@@ -227,6 +211,7 @@ proc/listclearnulls(list/list)
 	var/Li=1
 	var/Ri=1
 	var/list/result = new()
+
 	while(Li <= L.len && Ri <= R.len)
 		var/atom/rL = L[Li]
 		var/atom/rR = R[Ri]
@@ -455,7 +440,7 @@ proc/listclearnulls(list/list)
 // Insert an object into a sorted list, preserving sortedness
 /proc/dd_insertObjectList(var/list/L, var/O)
 	var/min = 1
-	var/max = L.len
+	var/max = L.len + 1
 	var/Oval = O:dd_SortValue()
 
 	while(1)
@@ -610,8 +595,7 @@ proc/dd_sortedTextList(list/incoming)
 /datum/alarm/dd_SortValue()
 	return "[sanitize_old(last_name)]"
 
-/proc/subtypesof(prototype)
-	return (typesof(prototype) - prototype)
+#define subtypesof(prototype) (typesof(prototype) - prototype)
 
 //creates every subtype of prototype (excluding prototype) and adds it to list L.
 //if no list/L is provided, one is created.
@@ -620,3 +604,20 @@ proc/dd_sortedTextList(list/incoming)
 	for(var/path in subtypesof(prototype))
 		L += new path()
 	return L
+
+#define listequal(A, B) (A.len == B.len && !length(A^B))
+
+/proc/filter_list(var/list/L, var/type)
+	. = list()
+	for(var/entry in L)
+		if(istype(entry, type))
+			. += entry
+
+
+/proc/group_by(var/list/group_list, var/key, var/value)
+	var/values = group_list[key]
+	if(!values)
+		values = list()
+		group_list[key] = values
+
+	values += value

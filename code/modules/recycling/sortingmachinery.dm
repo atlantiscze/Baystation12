@@ -236,9 +236,6 @@
 	if(user in target) //no wrapping closets that you are inside - it's not physically possible
 		return
 
-	user.attack_log += text("\[[time_stamp()]\] <font color='blue'>Has used [src.name] on \ref[target]</font>")
-
-
 	if (istype(target, /obj/item) && !(istype(target, /obj/item/weapon/storage) && !istype(target,/obj/item/weapon/storage/box)))
 		var/obj/item/O = target
 		if (src.amount > 1)
@@ -248,6 +245,7 @@
 					user.client.screen -= O
 			P.wrapped = O
 			O.forceMove(P)
+			P.w_class = O.w_class
 			var/i = round(O.w_class)
 			if(i in list(1,2,3,4,5))
 				P.icon_state = "deliverycrate[i]"
@@ -380,7 +378,7 @@
 /obj/machinery/disposal/deliveryChute/interact()
 	return
 
-/obj/machinery/disposal/deliveryChute/update()
+/obj/machinery/disposal/deliveryChute/update_icon()
 	return
 
 /obj/machinery/disposal/deliveryChute/Bumped(var/atom/movable/AM) //Go straight into the chute
@@ -422,7 +420,7 @@
 	flush = 0
 	if(mode == 2)	// if was ready,
 		mode = 1	// switch to charging
-	update()
+	update_icon()
 	return
 
 /obj/machinery/disposal/deliveryChute/attackby(var/obj/item/I, var/mob/user)
@@ -444,7 +442,7 @@
 		var/obj/item/weapon/weldingtool/W = I
 		if(W.remove_fuel(1,user))
 			user << "You start slicing the floorweld off the delivery chute."
-			if(do_after(user,20))
+			if(do_after(user,20, src))
 				playsound(src.loc, 'sound/items/Welder2.ogg', 100, 1)
 				if(!src || !W.isOn()) return
 				user << "You sliced the floorweld off the delivery chute."

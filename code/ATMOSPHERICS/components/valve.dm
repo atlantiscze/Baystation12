@@ -3,7 +3,7 @@
 	icon_state = "map_valve0"
 
 	name = "manual valve"
-	desc = "A pipe valve"
+	desc = "A pipe valve."
 
 	level = 1
 	dir = SOUTH
@@ -12,8 +12,6 @@
 	var/open = 0
 	var/openDuringInit = 0
 
-	var/obj/machinery/atmospherics/node1
-	var/obj/machinery/atmospherics/node2
 
 	var/datum/pipe_network/network_node1
 	var/datum/pipe_network/network_node2
@@ -249,12 +247,6 @@
 	open = 1
 	icon_state = "map_valve1"
 
-/obj/machinery/atmospherics/valve/digital/power_change()
-	var/old_stat = stat
-	..()
-	if(old_stat != stat)
-		update_icon()
-
 /obj/machinery/atmospherics/valve/digital/update_icon()
 	..()
 	if(!powered())
@@ -304,7 +296,7 @@
 		return 1
 	playsound(src.loc, 'sound/items/Ratchet.ogg', 50, 1)
 	user << "<span class='notice'>You begin to unfasten \the [src]...</span>"
-	if (do_after(user, 40))
+	if (do_after(user, 40, src))
 		user.visible_message( \
 			"<span class='notice'>\The [user] unfastens \the [src].</span>", \
 			"<span class='notice'>You have unfastened \the [src].</span>", \

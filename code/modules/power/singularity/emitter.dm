@@ -26,6 +26,10 @@
 
 	var/_wifi_id
 	var/datum/wifi/receiver/button/emitter/wifi_receiver
+	
+/obj/machinery/power/emitter/anchored
+	anchored = 1
+	state = 2
 
 /obj/machinery/power/emitter/verb/rotate()
 	set name = "Rotate"
@@ -133,13 +137,13 @@
 		var/burst_time = (min_burst_delay + max_burst_delay)/2 + 2*(burst_shots-1)
 		var/power_per_shot = active_power_usage * (burst_time/10) / burst_shots
 
-		playsound(src.loc, 'sound/weapons/emitter.ogg', 25, 1)
 		if(prob(35))
 			var/datum/effect/effect/system/spark_spread/s = new /datum/effect/effect/system/spark_spread
 			s.set_up(5, 1, src)
 			s.start()
 
 		var/obj/item/projectile/beam/emitter/A = new /obj/item/projectile/beam/emitter( src.loc )
+		playsound(src.loc, A.fire_sound, 25, 1)
 		A.damage = round(power_per_shot/EMITTER_DAMAGE_POWER_TRANSFER)
 		A.launch( get_step(src.loc, src.dir) )
 
@@ -182,7 +186,7 @@
 					user.visible_message("[user.name] starts to weld [src] to the floor.", \
 						"You start to weld [src] to the floor.", \
 						"You hear welding")
-					if (do_after(user,20))
+					if (do_after(user,20,src))
 						if(!src || !WT.isOn()) return
 						state = 2
 						user << "You weld [src] to the floor."
@@ -195,7 +199,7 @@
 					user.visible_message("[user.name] starts to cut [src] free from the floor.", \
 						"You start to cut [src] free from the floor.", \
 						"You hear welding")
-					if (do_after(user,20))
+					if (do_after(user,20,src))
 						if(!src || !WT.isOn()) return
 						state = 1
 						user << "You cut [src] free from the floor."
@@ -209,12 +213,8 @@
 			user << "<span class='warning'>The lock seems to be broken.</span>"
 			return
 		if(src.allowed(user))
-			if(active)
-				src.locked = !src.locked
-				user << "The controls are now [src.locked ? "locked." : "unlocked."]"
-			else
-				src.locked = 0 //just in case it somehow gets locked
-				user << "<span class='warning'>The controls can only be locked when [src] is online.</span>"
+			src.locked = !src.locked
+			user << "The controls are now [src.locked ? "locked." : "unlocked."]"
 		else
 			user << "<span class='warning'>Access denied.</span>"
 		return

@@ -51,12 +51,14 @@
 		CtrlClickOn(A)
 		return
 
+	face_atom(A) // change direction to face what you clicked on
+
 	if(control_disabled || !canClick())
 		return
 
 	if(multitool_mode && isobj(A))
 		var/obj/O = A
-		var/datum/expansion/multitool/MT = O.expansions[/datum/expansion/multitool]
+		var/datum/extension/interactive/multitool/MT = get_extension(O, /datum/extension/interactive/multitool)
 		if(MT)
 			MT.interact(aiMulti, src)
 			return
@@ -186,4 +188,8 @@
 //
 
 /mob/living/silicon/ai/TurfAdjacent(var/turf/T)
-	return (cameranet && cameranet.checkTurfVis(T))
+	return (cameranet && cameranet.is_turf_visible(T))
+
+/mob/living/silicon/ai/face_atom(var/atom/A)
+	if(eyeobj)
+		eyeobj.face_atom(A)

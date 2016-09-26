@@ -53,6 +53,14 @@
 	attackby(obj/item/I as obj, mob/user as mob)
 		return
 
+	do_surgery(mob/living/carbon/M, mob/living/user)
+		if(user.a_intent == I_HURT)
+			return 0
+		if(user.a_intent != I_HELP) //in case it is ever used as a surgery tool
+			return ..()
+		afterattack(M, user, 1)
+		return 1
+
 	afterattack(obj/target, mob/user, proximity)
 		if(!proximity || !target.reagents)
 			return
@@ -67,6 +75,7 @@
 			syringestab(target, user)
 			return
 
+		var/target_zone = check_zone(user.zone_sel.selecting)
 
 		switch(mode)
 			if(SYRINGE_DRAW)
@@ -87,27 +96,30 @@
 						var/amount = reagents.get_free_space()
 						var/mob/living/carbon/T = target
 						if(!T.dna)
-							user << "<span class='warning'>You are unable to locate any blood. (To be specific, your target seems to be missing their DNA datum).</span>"
+							user << "<span class='warning'>You are unable to locate any blood.</span>"
+							CRASH("[T] \[[T.type]\] was missing their dna datum!")
 							return
 						if(NOCLONE in T.mutations) //target done been et, no more blood in him
 							user << "<span class='warning'>You are unable to locate any blood.</span>"
 							return
 
-						var/datum/reagent/B
-						if(istype(T, /mob/living/carbon/human))
-							var/mob/living/carbon/human/H = T
-							if(H.species && H.species.flags & NO_BLOOD)
-								H.reagents.trans_to_obj(src, amount)
-							else
-								B = T.take_blood(src, amount)
+						var/injtime = time //Taking a blood sample through a hardsuit takes longer due to needing to find a port.
+						var/allow = T.can_inject(user, target_zone)
+						if(!allow)
+							return
+						if(allow == INJECTION_PORT)
+							injtime *= 2
+							user.visible_message("<span class='warning'>\The [user] begins hunting for an injection port on [target]'s suit!</span>")
 						else
-							B = T.take_blood(src,amount)
+							user.visible_message("<span class='warning'>\The [user] is trying to take a blood sample from [target].</span>")
 
-						if (B)
-							reagents.reagent_list += B
-							reagents.update_total()
-							on_reagent_change()
-							reagents.handle_reactions()
+						user.setClickCooldown(DEFAULT_QUICK_COOLDOWN)
+						user.do_attack_animation(target)
+
+						if(!do_mob(user, target, injtime))
+							return
+
+						src.take_blood_sample(T, amount)
 						user << "<span class='notice'>You take a blood sample from [target].</span>"
 						for(var/mob/O in viewers(4, user))
 							O.show_message("<span class='notice'>[user] takes a blood sample from [target].</span>", 1)
@@ -144,37 +156,17 @@
 					user << "<span class='notice'>[target] is full.</span>"
 					return
 
-				var/mob/living/carbon/human/H = target
-				if(istype(H))
-					var/obj/item/organ/external/affected = H.get_organ(user.zone_sel.selecting)
-					if(!affected)
-						user << "<span class='danger'>\The [H] is missing that limb!</span>"
-						return
-					else if(affected.status & ORGAN_ROBOT)
-						user << "<span class='danger'>You cannot inject a robotic limb.</span>"
-						return
-
-				if(ismob(target) && target != user)
-
+				if(isliving(target) && target != user)
+					var/mob/living/L = target
 					var/injtime = time //Injecting through a hardsuit takes longer due to needing to find a port.
-
-					if(istype(H))
-						if(H.wear_suit)
-							if(istype(H.wear_suit, /obj/item/clothing/suit/space))
-								injtime = injtime * 2
-							else if(!H.can_inject(user, 1))
-								return
-
-					else if(isliving(target))
-
-						var/mob/living/M = target
-						if(!M.can_inject(user, 1))
-							return
-
-					if(injtime == time)
-						user.visible_message("<span class='warning'>[user] is trying to inject [target] with [visible_name]!</span>")
+					var/allow = L.can_inject(user, target_zone)
+					if(!allow)
+						return
+					if(allow == INJECTION_PORT)
+						injtime *= 2
+						user.visible_message("<span class='warning'>\The [user] begins hunting for an injection port on [target]'s suit!</span>")
 					else
-						user.visible_message("<span class='warning'>[user] begins hunting for an injection port on [target]'s suit!</span>")
+						user.visible_message("<span class='warning'>\The [user] is trying to inject [target] with [visible_name]!</span>")
 
 					user.setClickCooldown(DEFAULT_QUICK_COOLDOWN)
 					user.do_attack_animation(target)
@@ -245,14 +237,11 @@
 
 			if (target != user && H.getarmor(target_zone, "melee") > 5 && prob(50))
 				for(var/mob/O in viewers(world.view, user))
-					O.show_message(text("\red <B>[user] tries to stab [target] in \the [hit_area] with [src.name], but the attack is deflected by armor!</B>"), 1)
+					O.show_message(text("<span class='danger'>[user] tries to stab [target] in \the [hit_area] with [src.name], but the attack is deflected by armor!</span>"), 1)
 				user.remove_from_mob(src)
 				qdel(src)
 
-				user.attack_log += "\[[time_stamp()]\]<font color='red'> Attacked [target.name] ([target.ckey]) with \the [src] (INTENT: HARM).</font>"
-				target.attack_log += "\[[time_stamp()]\]<font color='orange'> Attacked by [user.name] ([user.ckey]) with [src.name] (INTENT: HARM).</font>"
-				msg_admin_attack("[key_name_admin(user)] attacked [key_name_admin(target)] with [src.name] (INTENT: HARM) (<A HREF='?_src_=holder;adminplayerobservecoodjump=1;X=[user.x];Y=[user.y];Z=[user.z]'>JMP</a>)")
-
+				admin_attack_log(user, target, "Attacked using \a [src]", "Was attacked with \a [src]", "used \a [src] to attack")
 				return
 
 			user.visible_message("<span class='danger'>[user] stabs [target] in \the [hit_area] with [src.name]!</span>")
@@ -282,11 +271,28 @@
 			add_fingerprint(user)
 		update_icon()
 
+	proc/take_blood_sample(mob/living/carbon/T, var/amount)
+		var/datum/reagent/B
+		if(istype(T, /mob/living/carbon/human))
+			var/mob/living/carbon/human/H = T
+			if(!H.should_have_organ(BP_HEART))
+				H.reagents.trans_to_obj(src, amount)
+			else
+				B = T.take_blood(src, amount)
+		else
+			B = T.take_blood(src,amount)
+
+		if (B)
+			reagents.reagent_list += B
+			reagents.update_total()
+			on_reagent_change()
+			reagents.handle_reactions()
+
 /obj/item/weapon/reagent_containers/syringe/ld50_syringe
 	name = "Lethal Injection Syringe"
 	desc = "A syringe used for lethal injections."
-	amount_per_transfer_from_this = 50
-	volume = 50
+	amount_per_transfer_from_this = 60
+	volume = 60
 	visible_name = "a giant syringe"
 	time = 300
 
@@ -343,6 +349,15 @@
 /obj/item/weapon/reagent_containers/syringe/ld50_syringe/choral
 	New()
 		..()
-		reagents.add_reagent("chloralhydrate", 50)
+		reagents.add_reagent("chloralhydrate", 60)
 		mode = SYRINGE_INJECT
 		update_icon()
+
+/obj/item/weapon/reagent_containers/syringe/steroid
+	name = "Syringe (anabolic steroids)"
+	desc = "Contains drugs for muscle growth."
+	New()
+		..()
+		reagents.add_reagent("adrenaline",5)
+		reagents.add_reagent("hyperzine",10)
+

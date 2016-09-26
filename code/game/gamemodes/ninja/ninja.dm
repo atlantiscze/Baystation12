@@ -1,5 +1,5 @@
 /datum/game_mode/ninja
-	name = "ninja"
+	name = "Ninja"
 	round_description = "An agent of the Spider Clan is onboard the station!"
 	extended_round_description = "What was that?! Was that a person or did your eyes just play tricks on you? \
 		You have no idea. That slim-suited, cryptic individual is an enigma to you and all of your knowledge. \
@@ -11,5 +11,5 @@
 	config_tag = "ninja"
 	required_players = 1
 	required_enemies = 1
-	end_on_antag_death = 1
+	end_on_antag_death = 0
 	antag_tags = list(MODE_NINJA)

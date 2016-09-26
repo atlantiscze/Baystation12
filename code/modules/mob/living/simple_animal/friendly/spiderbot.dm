@@ -17,7 +17,7 @@
 
 	name = "spider-bot"
 	desc = "A skittering robotic friend!"
-	icon = 'icons/mob/robots.dmi'
+	icon = 'icons/mob/robots_misc.dmi'
 	icon_state = "spiderbot-chassis"
 	icon_living = "spiderbot-chassis"
 	icon_dead = "spiderbot-smashed"
@@ -61,7 +61,7 @@
 		if(!B.brainmob.key)
 			var/ghost_can_reenter = 0
 			if(B.brainmob.mind)
-				for(var/mob/dead/observer/G in player_list)
+				for(var/mob/observer/ghost/G in player_list)
 					if(G.can_reenter_corpse && G.mind == B.brainmob.mind)
 						ghost_can_reenter = 1
 						break
@@ -194,9 +194,7 @@
 	..()
 
 /mob/living/simple_animal/spiderbot/death()
-
-	living_mob_list -= src
-	dead_mob_list += src
+	switch_from_living_to_dead_mob_list()
 
 	if(camera)
 		camera.status = 0
@@ -204,7 +202,7 @@
 	held_item.loc = src.loc
 	held_item = null
 
-	gibs(loc, viruses, null, null, /obj/effect/gibspawner/robot) //TODO: use gib() or refactor spiderbots into synthetics.
+	gibs(loc, null, null, /obj/effect/gibspawner/robot) //TODO: use gib() or refactor spiderbots into synthetics.
 	qdel(src)
 	return
 
@@ -227,7 +225,7 @@
 			"You hear a skittering noise and a thump!")
 		var/obj/item/weapon/grenade/G = held_item
 		G.loc = src.loc
-		G.prime()
+		G.detonate()
 		held_item = null
 		return 1
 
@@ -255,7 +253,7 @@
 
 	var/list/items = list()
 	for(var/obj/item/I in view(1,src))
-		if(I.loc != src && I.w_class <= 2 && I.Adjacent(src) )
+		if(I.loc != src && I.w_class <= SMALL_ITEM && I.Adjacent(src) )
 			items.Add(I)
 
 	var/obj/selection = input("Select an item.", "Pickup") in items
@@ -279,9 +277,5 @@
 	..(user)
 	if(src.held_item)
 		user << "It is carrying \icon[src.held_item] \a [src.held_item]."
-
-/mob/living/simple_animal/spiderbot/cannot_use_vents()
-	return
-
 /mob/living/simple_animal/spiderbot/binarycheck()
 	return positronic

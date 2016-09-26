@@ -38,52 +38,69 @@
 
 /obj/item/device/flashlight/attack(mob/living/M as mob, mob/living/user as mob)
 	add_fingerprint(user)
-	if(on && user.zone_sel.selecting == "eyes")
+	if(on && user.zone_sel.selecting == BP_EYES)
 
-		if(((CLUMSY in user.mutations) || user.getBrainLoss() >= 60) && prob(50))	//too dumb to use flashlight properly
+		if((CLUMSY in user.mutations) && prob(50))	//too dumb to use flashlight properly
 			return ..()	//just hit them in the head
 
 		var/mob/living/carbon/human/H = M	//mob has protective eyewear
 		if(istype(H))
 			for(var/obj/item/clothing/C in list(H.head,H.wear_mask,H.glasses))
 				if(istype(C) && (C.body_parts_covered & EYES))
-					user << "<span class='warning'>You're going to need to remove [C.name] first.</span>"
+					user << "<span class='warning'>You're going to need to remove [C] first.</span>"
 					return
 
 			var/obj/item/organ/vision
-			if(H.species.vision_organ)
-				vision = H.internal_organs_by_name[H.species.vision_organ]
+			if(!H.species.vision_organ || !H.should_have_organ(H.species.vision_organ))
+				user << "<span class='warning'>You can't find anything on [H] to direct [src] into!</span>"
+				return
+
+			vision = H.internal_organs_by_name[H.species.vision_organ]
 			if(!vision)
-				user << "<span class='warning'>You can't find any [H.species.vision_organ ? H.species.vision_organ : "eyes"] on [H]!</span>"
+				vision = H.species.has_organ[H.species.vision_organ]
+				user << "<span class='warning'>\The [H] is missing \his [initial(vision.name)]!</span>"
+				return
 
-			user.visible_message("<span class='notice'>\The [user] directs [src] to [M]'s eyes.</span>", \
-							 	 "<span class='notice'>You direct [src] to [M]'s eyes.</span>")
-			if(H == user)	//can't look into your own eyes buster
-				if(M.stat == DEAD || M.blinded)	//mob is dead or fully blind
-					user << "<span class='warning'>\The [M]'s pupils do not react to the light!</span>"
-					return
-				if(XRAY in M.mutations)
-					user << "<span class='notice'>\The [M] pupils give an eerie glow!</span>"
-				if(vision.is_bruised())
-					user << "<span class='warning'>There's visible damage to [M]'s [vision.name]!</span>"
-				else if(M.eye_blurry)
-					user << "<span class='notice'>\The [M]'s pupils react slower than normally.</span>"
-				if(M.getBrainLoss() > 15)
-					user << "<span class='notice'>There's visible lag between left and right pupils' reactions.</span>"
+			user.visible_message("<span class='notice'>\The [user] directs [src] into [M]'s [vision.name].</span>", \
+								 "<span class='notice'>You direct [src] into [M]'s [vision.name].</span>")
 
-				var/list/pinpoint = list("oxycodone"=1,"tramadol"=5)
-				var/list/dilating = list("space_drugs"=5,"mindbreaker"=1)
-				if(M.reagents.has_any_reagent(pinpoint) || H.ingested.has_any_reagent(pinpoint))
-					user << "<span class='notice'>\The [M]'s pupils are already pinpoint and cannot narrow any more.</span>"
-				else if(M.reagents.has_any_reagent(dilating) || H.ingested.has_any_reagent(dilating))
-					user << "<span class='notice'>\The [M]'s pupils narrow slightly, but are still very dilated.</span>"
-				else
-					user << "<span class='notice'>\The [M]'s pupils narrow.</span>"
-			
+			inspect_vision(vision, user)
+
 			user.setClickCooldown(DEFAULT_ATTACK_COOLDOWN) //can be used offensively
-			flick("flash", M.flash)
+			M.flash_eyes()
 	else
 		return ..()
+
+/obj/item/device/flashlight/proc/inspect_vision(obj/item/organ/vision, mob/living/user)
+	var/mob/living/carbon/human/H = vision.owner
+
+	if(H == user)	//can't look into your own eyes buster
+		return
+
+	if(vision.robotic < ORGAN_ROBOT )
+
+		if(vision.owner.stat == DEAD || H.blinded)	//mob is dead or fully blind
+			user << "<span class='warning'>\The [H]'s pupils do not react to the light!</span>"
+			return
+		if(XRAY in H.mutations)
+			user << "<span class='notice'>\The [H]'s pupils give an eerie glow!</span>"
+		if(vision.damage)
+			user << "<span class='warning'>There's visible damage to [H]'s [vision.name]!</span>"
+		else if(H.eye_blurry)
+			user << "<span class='notice'>\The [H]'s pupils react slower than normally.</span>"
+		if(H.getBrainLoss() > 15)
+			user << "<span class='notice'>There's visible lag between left and right pupils' reactions.</span>"
+
+		var/list/pinpoint = list("oxycodone"=1,"tramadol"=5)
+		var/list/dilating = list("space_drugs"=5,"mindbreaker"=1)
+		if(H.reagents.has_any_reagent(pinpoint) || H.ingested.has_any_reagent(pinpoint))
+			user << "<span class='notice'>\The [H]'s pupils are already pinpoint and cannot narrow any more.</span>"
+		else if(H.reagents.has_any_reagent(dilating) || H.ingested.has_any_reagent(dilating))
+			user << "<span class='notice'>\The [H]'s pupils narrow slightly, but are still very dilated.</span>"
+		else
+			user << "<span class='notice'>\The [H]'s pupils narrow.</span>"
+
+	//if someone wants to implement inspecting robot eyes here would be the place to do it.
 
 /obj/item/device/flashlight/pen
 	name = "penlight"
@@ -123,7 +140,7 @@
 	desc = "A classic green-shaded desk lamp."
 	icon_state = "lampgreen"
 	item_state = "lampgreen"
-	brightness_on = 5
+	brightness_on = 4
 	light_color = "#FFC58F"
 
 /obj/item/device/flashlight/lamp/verb/toggle_light()
@@ -139,7 +156,7 @@
 /obj/item/device/flashlight/flare
 	name = "flare"
 	desc = "A red standard-issue flare. There are instructions on the side reading 'pull cord, make light'."
-	w_class = 2.0
+	w_class = 1
 	brightness_on = 8 // Pretty bright.
 	light_power = 3
 	light_color = "#e58775"
@@ -172,21 +189,22 @@
 	update_icon()
 
 /obj/item/device/flashlight/flare/attack_self(mob/user)
+	if(turn_on(user))
+		user.visible_message("<span class='notice'>\The [user] activates \the [src].</span>", "<span class='notice'>You pull the cord on the flare, activating it!</span>")
 
-	// Usual checks
-	if(!fuel)
-		user << "<span class='notice'>It's out of fuel.</span>"
-		return
+/obj/item/device/flashlight/flare/proc/turn_on(var/mob/user)
 	if(on)
-		return
-
-	. = ..()
-	// All good, turn it on.
-	if(.)
-		user.visible_message("<span class='notice'>[user] activates the flare.</span>", "<span class='notice'>You pull the cord on the flare, activating it!</span>")
-		src.force = on_damage
-		src.damtype = "fire"
-		processing_objects += src
+		return FALSE
+	if(!fuel)
+		if(user)
+			user << "<span class='notice'>It's out of fuel.</span>"
+		return FALSE
+	on = TRUE
+	force = on_damage
+	damtype = "fire"
+	processing_objects += src
+	update_icon()
+	return 1
 
 /obj/item/device/flashlight/slime
 	gender = PLURAL

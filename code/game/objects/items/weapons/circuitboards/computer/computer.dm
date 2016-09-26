@@ -21,28 +21,10 @@
 	name = T_BOARD("medical records console")
 	build_path = /obj/machinery/computer/med_data
 
-/obj/item/weapon/circuitboard/pandemic
-	name = T_BOARD("PanD.E.M.I.C. 2200")
-	build_path = /obj/machinery/computer/pandemic
-	origin_tech = list(TECH_DATA = 2, TECH_BIO = 2)
-
 /obj/item/weapon/circuitboard/scan_consolenew
 	name = T_BOARD("DNA machine")
 	build_path = /obj/machinery/computer/scan_consolenew
 	origin_tech = list(TECH_DATA = 2, TECH_BIO = 2)
-
-/obj/item/weapon/circuitboard/communications
-	name = T_BOARD("command and communications console")
-	build_path = /obj/machinery/computer/communications
-	origin_tech = list(TECH_DATA = 2, TECH_MAGNET = 2)
-
-/obj/item/weapon/circuitboard/card
-	name = T_BOARD("ID card modification console")
-	build_path = /obj/machinery/computer/card
-
-/obj/item/weapon/circuitboard/card/centcom
-	name = T_BOARD("CentCom ID card modification console")
-	build_path = /obj/machinery/computer/card/centcom
 
 /obj/item/weapon/circuitboard/teleporter
 	name = T_BOARD("teleporter control console")
@@ -145,11 +127,6 @@
 	name = T_BOARD("disease splicer")
 	build_path = /obj/machinery/computer/diseasesplicer
 
-/obj/item/weapon/circuitboard/ordercomp
-	name = T_BOARD("supply ordering console")
-	build_path = /obj/machinery/computer/ordercomp
-	origin_tech = list(TECH_DATA = 2)
-
 /obj/item/weapon/circuitboard/mining_shuttle
 	name = T_BOARD("mining shuttle console")
 	build_path = /obj/machinery/computer/shuttle_control/mining
@@ -165,19 +142,9 @@
 	build_path = /obj/machinery/computer/shuttle_control/research
 	origin_tech = list(TECH_DATA = 2)
 
-/obj/item/weapon/circuitboard/aifixer
-	name = T_BOARD("AI integrity restorer")
-	build_path = /obj/machinery/computer/aifixer
-	origin_tech = list(TECH_DATA = 3, TECH_BIO = 2)
-
 /obj/item/weapon/circuitboard/area_atmos
 	name = T_BOARD("area air control console")
 	build_path = /obj/machinery/computer/area_atmos
-	origin_tech = list(TECH_DATA = 2)
-
-/obj/item/weapon/circuitboard/prison_shuttle
-	name = T_BOARD("prison shuttle control console")
-	build_path = /obj/machinery/computer/prison_shuttle
 	origin_tech = list(TECH_DATA = 2)
 
 /obj/item/weapon/circuitboard/rcon_console

@@ -9,7 +9,7 @@
 	layer = 2.3 //under pipes
 	//	flags = CONDUCT
 
-/obj/structure/lattice/New()
+/obj/structure/lattice/initialize()
 	..()
 ///// Z-Level Stuff
 	if(!(istype(src.loc, /turf/space) || istype(src.loc, /turf/simulated/open)))
@@ -58,7 +58,7 @@
 		var/obj/item/weapon/weldingtool/WT = C
 		if(WT.remove_fuel(0, user))
 			user << "<span class='notice'>Slicing lattice joints ...</span>"
-		PoolOrNew(/obj/item/stack/rods, src.loc)
+		new /obj/item/stack/rods(loc)
 		qdel(src)
 
 	return

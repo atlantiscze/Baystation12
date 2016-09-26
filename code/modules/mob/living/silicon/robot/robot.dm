@@ -24,6 +24,7 @@
 
 //Icon stuff
 
+	var/static/list/eye_overlays
 	var/icontype 				//Persistent icontype tracking allows for cleaner icon updates
 	var/module_sprites[0] 		//Used to store the associations between sprite names and sprite index.
 	var/icon_selected = 1		//If icon selection has been completed yet
@@ -60,6 +61,8 @@
 
 	var/obj/item/device/pda/ai/rbPDA = null
 
+	var/obj/item/weapon/stock_parts/matter_bin/storage = null
+
 	var/opened = 0
 	var/emagged = 0
 	var/wiresexposed = 0
@@ -80,11 +83,12 @@
 	var/weapon_lock = 0
 	var/weaponlock_time = 120
 	var/lawupdate = 1 //Cyborgs will sync their laws with their AI by default
-	var/lockcharge //Used when locking down a borg to preserve cell charge
+	var/lockcharge //If a robot is locked down
 	var/speed = 0 //Cause sec borgs gotta go fast //No they dont!
 	var/scrambledcodes = 0 // Used to determine if a borg shows up on the robotics console.  Setting to one hides them.
 	var/tracking_entities = 0 //The number of known entities currently accessing the internal camera
 	var/braintype = "Cyborg"
+	var/intenselight = 0	// Whether cyborg's integrated light was upgraded
 
 	var/list/robot_verbs_default = list(
 		/mob/living/silicon/robot/proc/sensor_mode,
@@ -103,7 +107,7 @@
 
 	robot_modules_background = new()
 	robot_modules_background.icon_state = "block"
-	robot_modules_background.layer = 19 //Objects that appear on screen are on layer 20, UI should be just below it.
+	robot_modules_background.layer = SCREEN_LAYER
 	ident = rand(1, 999)
 	module_sprites["Basic"] = "robot"
 	icontype = "Basic"
@@ -130,9 +134,7 @@
 		C.wrapped = new C.external_type
 
 	if(!cell)
-		cell = new /obj/item/weapon/cell(src)
-		cell.maxcharge = 7500
-		cell.charge = 7500
+		cell = new /obj/item/weapon/cell/high(src)
 
 	..()
 
@@ -143,15 +145,24 @@
 
 	add_robot_verbs()
 
-	hud_list[HEALTH_HUD]      = image('icons/mob/hud.dmi', src, "hudblank")
-	hud_list[STATUS_HUD]      = image('icons/mob/hud.dmi', src, "hudhealth100")
-	hud_list[LIFE_HUD]        = image('icons/mob/hud.dmi', src, "hudhealth100")
-	hud_list[ID_HUD]          = image('icons/mob/hud.dmi', src, "hudblank")
-	hud_list[WANTED_HUD]      = image('icons/mob/hud.dmi', src, "hudblank")
-	hud_list[IMPLOYAL_HUD]    = image('icons/mob/hud.dmi', src, "hudblank")
-	hud_list[IMPCHEM_HUD]     = image('icons/mob/hud.dmi', src, "hudblank")
-	hud_list[IMPTRACK_HUD]    = image('icons/mob/hud.dmi', src, "hudblank")
-	hud_list[SPECIALROLE_HUD] = image('icons/mob/hud.dmi', src, "hudblank")
+	hud_list[HEALTH_HUD]      = new /image/hud_overlay('icons/mob/hud.dmi', src, "hudblank")
+	hud_list[STATUS_HUD]      = new /image/hud_overlay('icons/mob/hud.dmi', src, "hudhealth100")
+	hud_list[LIFE_HUD]        = new /image/hud_overlay('icons/mob/hud.dmi', src, "hudhealth100")
+	hud_list[ID_HUD]          = new /image/hud_overlay('icons/mob/hud.dmi', src, "hudblank")
+	hud_list[WANTED_HUD]      = new /image/hud_overlay('icons/mob/hud.dmi', src, "hudblank")
+	hud_list[IMPLOYAL_HUD]    = new /image/hud_overlay('icons/mob/hud.dmi', src, "hudblank")
+	hud_list[IMPCHEM_HUD]     = new /image/hud_overlay('icons/mob/hud.dmi', src, "hudblank")
+	hud_list[IMPTRACK_HUD]    = new /image/hud_overlay('icons/mob/hud.dmi', src, "hudblank")
+	hud_list[SPECIALROLE_HUD] = new /image/hud_overlay('icons/mob/hud.dmi', src, "hudblank")
+
+/mob/living/silicon/robot/proc/recalculate_synth_capacities()
+	if(!module || !module.synths)
+		return
+	var/mult = 1
+	if(storage)
+		mult += storage.rating
+	for(var/datum/matter_synth/M in module.synths)
+		M.set_multiplier(mult)
 
 /mob/living/silicon/robot/proc/init()
 	aiCamera = new/obj/item/device/camera/siliconcam/robot_camera(src)
@@ -165,7 +176,7 @@
 
 	playsound(loc, 'sound/voice/liveagain.ogg', 75, 1)
 
-/mob/living/silicon/robot/SetName(pickedName as text)
+/mob/living/silicon/robot/fully_replace_character_name(pickedName as text)
 	custom_name = pickedName
 	updatename()
 
@@ -222,9 +233,17 @@
 	if(new_sprites && new_sprites.len)
 		module_sprites = new_sprites.Copy()
 		//Custom_sprite check and entry
+
 		if (custom_sprite == 1)
-			module_sprites["Custom"] = "[src.ckey]-[modtype]"
-			icontype = "Custom"
+			var/list/valid_states = icon_states(CUSTOM_ITEM_SYNTH)
+			if("[ckey]-[modtype]" in valid_states)
+				module_sprites["Custom"] = "[src.ckey]-[modtype]"
+				icon = CUSTOM_ITEM_SYNTH
+				icontype = "Custom"
+			else
+				icontype = module_sprites[1]
+				icon = 'icons/mob/robots.dmi'
+				src << "<span class='warning'>Custom Sprite Sheet does not contain a valid icon_state for [ckey]-[modtype]</span>"
 		else
 			icontype = module_sprites[1]
 		icon_state = module_sprites[icontype]
@@ -239,7 +258,7 @@
 	if((crisis && security_level == SEC_LEVEL_RED) || crisis_override) //Leaving this in until it's balanced appropriately.
 		src << "\red Crisis mode active. Combat module available."
 		modules+="Combat"
-	modtype = input("Please, select a module!", "Robot", null, null) as null|anything in modules
+	modtype = input("Please, select a module!", "Robot module", null, null) as null|anything in modules
 
 	if(module)
 		return
@@ -252,6 +271,7 @@
 	hands.icon_state = lowertext(modtype)
 	feedback_inc("cyborg_[lowertext(modtype)]",1)
 	updatename()
+	recalculate_synth_capacities()
 	notify_ai(ROBOT_NOTIFICATION_NEW_MODULE, module.name)
 
 /mob/living/silicon/robot/proc/updatename(var/prefix as text)
@@ -259,9 +279,9 @@
 		modtype = prefix
 
 	if(istype(mmi, /obj/item/device/mmi/digital/posibrain))
-		braintype = "Android"
-	else if(istype(mmi, /obj/item/device/mmi/digital/robot))
 		braintype = "Robot"
+	else if(istype(mmi, /obj/item/device/mmi/digital/robot))
+		braintype = "Drone"
 	else
 		braintype = "Cyborg"
 
@@ -279,6 +299,10 @@
 	// if we've changed our name, we also need to update the display name for our PDA
 	setup_PDA()
 
+	// Synths aren't in data_core, but are on manifest. Invalidate old one so the
+	// synth shows up.
+	data_core.ResetPDAManifest()
+
 	//We also need to update name of internal camera.
 	if (camera)
 		camera.c_tag = changed_name
@@ -295,7 +319,7 @@
 			flavor_text = client.prefs.flavour_texts_robot["Default"]
 
 /mob/living/silicon/robot/verb/Namepick()
-	set category = "Robot Commands"
+	set category = "Silicon Commands"
 	if(custom_name)
 		return 0
 
@@ -310,7 +334,7 @@
 
 // this verb lets cyborgs see the stations manifest
 /mob/living/silicon/robot/verb/cmd_station_manifest()
-	set category = "Robot Commands"
+	set category = "Silicon Commands"
 	set name = "Show Crew Manifest"
 	show_station_manifest()
 
@@ -326,32 +350,34 @@
 	return dat
 
 /mob/living/silicon/robot/verb/toggle_lights()
-	set category = "Robot Commands"
+	set category = "Silicon Commands"
 	set name = "Toggle Lights"
+
+	if(stat == DEAD)
+		return
 
 	lights_on = !lights_on
 	usr << "You [lights_on ? "enable" : "disable"] your integrated light."
-	if(lights_on)
-		set_light(integrated_light_power) // 1.5x luminosity of flashlight
-	else
-		set_light(0)
+	update_robot_light()
 
 /mob/living/silicon/robot/verb/self_diagnosis_verb()
-	set category = "Robot Commands"
+	set category = "Silicon Commands"
 	set name = "Self Diagnosis"
 
 	if(!is_component_functioning("diagnosis unit"))
 		src << "\red Your self-diagnosis component isn't functioning."
+		return
 
 	var/datum/robot_component/CO = get_component("diagnosis unit")
 	if (!cell_use_power(CO.active_usage))
 		src << "\red Low Power."
+		return
 	var/dat = self_diagnosis()
 	src << browse(dat, "window=robotdiagnosis")
 
 
 /mob/living/silicon/robot/verb/toggle_component()
-	set category = "Robot Commands"
+	set category = "Silicon Commands"
 	set name = "Toggle Component"
 	set desc = "Toggle a component, conserving power."
 
@@ -373,6 +399,15 @@
 	else
 		C.toggled = 1
 		src << "\red You enable [C.name]."
+
+/mob/living/silicon/robot/proc/update_robot_light()
+	if(lights_on)
+		if(intenselight)
+			set_light(integrated_light_power * 2, integrated_light_power)
+		else
+			set_light(integrated_light_power)
+	else
+		set_light(0)
 
 // this function displays jetpack pressure in the stat panel
 /mob/living/silicon/robot/proc/show_jetpack_pressure()
@@ -402,14 +437,14 @@
 
 // update the status screen display
 /mob/living/silicon/robot/Stat()
-	..()
+	. = ..()
 	if (statpanel("Status"))
 		show_cell_power()
 		show_jetpack_pressure()
 		stat(null, text("Lights: [lights_on ? "ON" : "OFF"]"))
 		if(module)
 			for(var/datum/matter_synth/ms in module.synths)
-				stat("[ms.name]: [ms.energy]/[ms.max_energy]")
+				stat("[ms.name]: [ms.energy]/[ms.max_energy_multiplied]")
 
 /mob/living/silicon/robot/restrained()
 	return 0
@@ -529,6 +564,17 @@
 				user << "You open the cover."
 				opened = 1
 				updateicon()
+	else if (istype(W, /obj/item/weapon/stock_parts/matter_bin) && opened) // Installing/swapping a matter bin
+		if(storage)
+			user << "You replace \the [storage] with \the [W]"
+			storage.forceMove(get_turf(src))
+			storage = null
+		else
+			user << "You install \the [W]"
+		user.drop_item()
+		storage = W
+		W.forceMove(src)
+		recalculate_synth_capacities()
 
 	else if (istype(W, /obj/item/weapon/cell) && opened)	// trying to put a cell inside
 		var/datum/robot_component/C = components["power cell"]
@@ -536,8 +582,8 @@
 			user << "Close the panel first."
 		else if(cell)
 			user << "There is a power cell already installed."
-		else if(W.w_class != 3)
-			user << "\The [W] is too [W.w_class < 3? "small" : "large"] to fit here."
+		else if(W.w_class != NORMAL_ITEM)
+			user << "\The [W] is too [W.w_class < NORMAL_ITEM? "small" : "large"] to fit here."
 		else
 			user.drop_item()
 			W.loc = src
@@ -673,7 +719,15 @@
 /mob/living/silicon/robot/updateicon()
 	overlays.Cut()
 	if(stat == CONSCIOUS)
-		overlays += "eyes-[module_sprites[icontype]]"
+		var/eye_icon_state = "eyes-[module_sprites[icontype]]"
+		if(eye_icon_state in icon_states(icon))
+			if(!eye_overlays)
+				eye_overlays = list()
+			var/image/eye_overlay = eye_overlays[eye_icon_state]
+			if(!eye_overlay)
+				eye_overlay = image(icon, eye_icon_state, LIGHTING_LAYER+0.1)
+				eye_overlays[eye_icon_state] = eye_overlay
+			overlays += eye_overlay
 
 	if(opened)
 		var/panelprefix = custom_sprite ? src.ckey : "ov"
@@ -741,7 +795,7 @@
 		return 1
 
 	if (href_list["showalerts"])
-		subsystem_alarm_monitor()
+		open_subsystem(/datum/nano_module/alarm_monitor/all)
 		return 1
 
 	if (href_list["mod"])
@@ -763,19 +817,19 @@
 			return 1
 		if(!module_state_1)
 			module_state_1 = O
-			O.layer = 20
+			O.layer = SCREEN_LAYER
 			contents += O
 			if(istype(module_state_1,/obj/item/borg/sight))
 				sight_mode |= module_state_1:sight_mode
 		else if(!module_state_2)
 			module_state_2 = O
-			O.layer = 20
+			O.layer = SCREEN_LAYER
 			contents += O
 			if(istype(module_state_2,/obj/item/borg/sight))
 				sight_mode |= module_state_2:sight_mode
 		else if(!module_state_3)
 			module_state_3 = O
-			O.layer = 20
+			O.layer = SCREEN_LAYER
 			contents += O
 			if(istype(module_state_3,/obj/item/borg/sight))
 				sight_mode |= module_state_3:sight_mode
@@ -862,7 +916,7 @@
 
 
 /mob/living/silicon/robot/proc/ResetSecurityCodes()
-	set category = "Robot Commands"
+	set category = "Silicon Commands"
 	set name = "Reset Identity Codes"
 	set desc = "Scrambles your security and identification codes and resets your current buffers.  Unlocks you and but permenantly severs you from your AI and the robotics console and will deactivate your camera system."
 
@@ -877,8 +931,14 @@
 	// They stay locked down if their wire is cut.
 	if(wires.LockedCut())
 		state = 1
-	lockcharge = state
-	update_canmove()
+	else if(has_zeroth_law())
+		state = 0
+
+	if(lockcharge != state)
+		lockcharge = state
+		update_canmove()
+		return 1
+	return 0
 
 /mob/living/silicon/robot/mode()
 	set name = "Activate Held Object"
@@ -902,7 +962,7 @@
 		if(!(icontype in module_sprites))
 			icontype = module_sprites[1]
 	else
-		icontype = input("Select an icon! [triesleft ? "You have [triesleft] more chance\s." : "This is your last try."]", "Robot", icontype, null) in module_sprites
+		icontype = input("Select an icon! [triesleft ? "You have [triesleft] more chance\s." : "This is your last try."]", "Robot Icon", icontype, null) in module_sprites
 	icon_state = module_sprites[icontype]
 	updateicon()
 
@@ -919,27 +979,21 @@
 
 /mob/living/silicon/robot/proc/sensor_mode() //Medical/Security HUD controller for borgs
 	set name = "Set Sensor Augmentation"
-	set category = "Robot Commands"
+	set category = "Silicon Commands"
 	set desc = "Augment visual feed with internal sensor overlays."
 	toggle_sensor_mode()
 
 /mob/living/silicon/robot/proc/add_robot_verbs()
 	src.verbs |= robot_verbs_default
-	src.verbs |= silicon_subsystems
 
 /mob/living/silicon/robot/proc/remove_robot_verbs()
 	src.verbs -= robot_verbs_default
-	src.verbs -= silicon_subsystems
 
 // Uses power from cyborg's cell. Returns 1 on success or 0 on failure.
 // Properly converts using CELLRATE now! Amount is in Joules.
 /mob/living/silicon/robot/proc/cell_use_power(var/amount = 0)
 	// No cell inserted
 	if(!cell)
-		return 0
-
-	// Power cell is empty.
-	if(cell.charge == 0)
 		return 0
 
 	var/power_use = amount * CYBORG_POWER_USAGE_MULTIPLIER
@@ -1017,6 +1071,7 @@
 				var/time = time2text(world.realtime,"hh:mm:ss")
 				lawchanges.Add("[time] <B>:</B> [user.name]([user.key]) emagged [name]([key])")
 				set_zeroth_law("Only [user.real_name] and people \he designates as being such are operatives.")
+				SetLockdown(0)
 				. = 1
 				spawn()
 					src << "<span class='danger'>ALERT: Foreign software detected.</span>"

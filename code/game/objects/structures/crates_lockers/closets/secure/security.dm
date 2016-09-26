@@ -14,11 +14,13 @@
 			new /obj/item/weapon/storage/backpack/captain(src)
 		else
 			new /obj/item/weapon/storage/backpack/satchel_cap(src)
+		if(prob(50))
+			new /obj/item/weapon/storage/backpack/dufflebag/captain(src)
 		new /obj/item/clothing/suit/captunic(src)
 		new /obj/item/clothing/suit/captunic/capjacket(src)
 		new /obj/item/clothing/head/caphat/cap(src)
 		new /obj/item/clothing/under/rank/captain(src)
-		new /obj/item/clothing/suit/armor/vest(src)
+		new /obj/item/clothing/suit/armor/vest/nt(src)
 		new /obj/item/weapon/cartridge/captain(src)
 		new /obj/item/clothing/head/helmet(src)
 		new /obj/item/clothing/shoes/brown(src)
@@ -47,7 +49,7 @@
 	New()
 		..()
 		new /obj/item/clothing/glasses/sunglasses(src)
-		new /obj/item/clothing/suit/armor/vest(src)
+		new /obj/item/clothing/suit/armor/vest/nt(src)
 		new /obj/item/clothing/head/helmet(src)
 		new /obj/item/weapon/cartridge/hop(src)
 		new /obj/item/device/radio/headset/heads/hop(src)
@@ -103,8 +105,8 @@
 		else
 			new /obj/item/weapon/storage/backpack/satchel_sec(src)
 		new /obj/item/clothing/head/HoS(src)
-		new /obj/item/clothing/suit/armor/vest/security(src)
-		new /obj/item/clothing/suit/storage/vest/hos(src)
+		new /obj/item/clothing/suit/armor/vest/nt(src)
+		new /obj/item/clothing/suit/storage/vest/nt/hos(src)
 		new /obj/item/clothing/under/rank/head_of_security/jensen(src)
 		new /obj/item/clothing/under/rank/head_of_security/corp(src)
 		new /obj/item/clothing/suit/armor/hos/jensen(src)
@@ -123,7 +125,6 @@
 		new /obj/item/clothing/accessory/holster/waist(src)
 		new /obj/item/weapon/melee/telebaton(src)
 		new /obj/item/clothing/head/beret/sec/corporate/hos(src)
-		new /obj/item/clothing/accessory/badge/hos(src)
 		return
 
 
@@ -145,8 +146,10 @@
 			new /obj/item/weapon/storage/backpack/security(src)
 		else
 			new /obj/item/weapon/storage/backpack/satchel_sec(src)
-		new /obj/item/clothing/suit/armor/vest/security(src)
-		new /obj/item/clothing/suit/storage/vest/warden(src)
+		if(prob(50))
+			new /obj/item/weapon/storage/backpack/dufflebag/sec(src)
+		new /obj/item/clothing/suit/armor/vest/nt(src)
+		new /obj/item/clothing/suit/storage/vest/nt/warden(src)
 		new /obj/item/clothing/under/rank/warden(src)
 		new /obj/item/clothing/under/rank/warden/corp(src)
 		new /obj/item/clothing/suit/armor/vest/warden(src)
@@ -163,7 +166,6 @@
 		new /obj/item/weapon/gun/energy/gun(src)
 		new /obj/item/weapon/storage/box/holobadge(src)
 		new /obj/item/clothing/head/beret/sec/corporate/warden(src)
-		new /obj/item/clothing/accessory/badge/warden(src)
 		return
 
 
@@ -184,7 +186,9 @@
 			new /obj/item/weapon/storage/backpack/security(src)
 		else
 			new /obj/item/weapon/storage/backpack/satchel_sec(src)
-		new /obj/item/clothing/suit/armor/vest/security(src)
+		if(prob(50))
+			new /obj/item/weapon/storage/backpack/dufflebag/sec(src)
+		new /obj/item/clothing/suit/armor/vest/nt(src)
 		new /obj/item/clothing/head/helmet(src)
 //		new /obj/item/weapon/cartridge/security(src)
 		new /obj/item/device/radio/headset/headset_sec(src)
@@ -255,7 +259,7 @@
 		new /obj/item/clothing/suit/storage/det_trench/grey(src)
 		new /obj/item/clothing/suit/storage/forensics/blue(src)
 		new /obj/item/clothing/suit/storage/forensics/red(src)
-		new /obj/item/clothing/gloves/black(src)
+		new /obj/item/clothing/gloves/thick(src)
 		new /obj/item/clothing/head/det(src)
 		new /obj/item/clothing/head/det/grey(src)
 		new /obj/item/clothing/shoes/laceup(src)
@@ -266,7 +270,8 @@
 		new /obj/item/taperoll/police(src)
 		new /obj/item/weapon/gun/projectile/colt/detective(src)
 		new /obj/item/clothing/accessory/holster/armpit(src)
-		return
+		new /obj/item/weapon/reagent_containers/food/drinks/flask/detflask(src)
+		new /obj/item/weapon/storage/briefcase/crimekit(src)
 
 /obj/structure/closet/secure_closet/detective/update_icon()
 	if(broken)
@@ -348,3 +353,22 @@
 				icon_state = icon_closed
 		else
 			icon_state = icon_opened
+
+
+/obj/structure/closet/secure_closet/lawyer
+	name = "internal affairs secure closet"
+	req_access = list(access_lawyer)
+
+	New()
+		..()
+		new /obj/item/device/flash(src)
+		new /obj/item/device/flash(src)
+		new /obj/item/device/camera(src)
+		new /obj/item/device/camera(src)
+		new /obj/item/device/camera_film(src)
+		new /obj/item/device/camera_film(src)
+		new /obj/item/device/taperecorder(src)
+		new /obj/item/device/taperecorder(src)
+		new /obj/item/weapon/storage/secure/briefcase(src)
+		new /obj/item/weapon/storage/secure/briefcase(src)
+		return

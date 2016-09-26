@@ -2,7 +2,7 @@
 	name = "hydraulic clamp"
 	icon_state = "mecha_clamp"
 	equip_cooldown = 15
-	energy_drain = 10
+	energy_drain = 1 KILOWATTS
 	var/dam_force = 20
 	var/obj/mecha/working/ripley/cargo_holder
 	required_type = /obj/mecha/working
@@ -83,8 +83,8 @@
 			if(!target_obj.vars.Find("unacidable") || target_obj.unacidable)	return
 		set_ready_state(0)
 		chassis.use_power(energy_drain)
-		chassis.visible_message("<span class='danger'>[chassis] starts to drill [target]</span>", "<span class='warning'>You hear the drill.</span>")
-		occupant_message("<span class='danger'>You start to drill [target]</span>")
+		chassis.visible_message("<span class='danger'>\The [chassis] starts to drill \the [target]</span>", "<span class='warning'>You hear a large drill.</span>")
+		occupant_message("<span class='danger'>You start to drill \the [target]</span>")
 		var/T = chassis.loc
 		var/C = target.loc	//why are these backwards? we may never know -Pete
 		if(do_after_cooldown(target))
@@ -92,15 +92,15 @@
 				if(istype(target, /turf/simulated/wall))
 					var/turf/simulated/wall/W = target
 					if(W.reinf_material)
-						occupant_message("<span class='warning'>[target] is too durable to drill through.</span>")
+						occupant_message("<span class='warning'>\The [target] is too durable to drill through.</span>")
 					else
-						log_message("Drilled through [target]")
+						log_message("Drilled through \the [target]")
 						target.ex_act(2)
 				else if(istype(target, /turf/simulated/mineral))
 					for(var/turf/simulated/mineral/M in range(chassis,1))
 						if(get_dir(chassis,M)&chassis.dir)
 							M.GetDrilled()
-					log_message("Drilled through [target]")
+					log_message("Drilled through \the [target]")
 					if(locate(/obj/item/mecha_parts/mecha_equipment/tool/hydraulic_clamp) in chassis.equipment)
 						var/obj/structure/ore_box/ore_box = locate(/obj/structure/ore_box) in chassis:cargo
 						if(ore_box)
@@ -111,7 +111,7 @@
 					for(var/turf/simulated/floor/asteroid/M in range(chassis,1))
 						if(get_dir(chassis,M)&chassis.dir)
 							M.gets_dug()
-					log_message("Drilled through [target]")
+					log_message("Drilled through \the [target]")
 					if(locate(/obj/item/mecha_parts/mecha_equipment/tool/hydraulic_clamp) in chassis.equipment)
 						var/obj/structure/ore_box/ore_box = locate(/obj/structure/ore_box) in chassis:cargo
 						if(ore_box)
@@ -119,7 +119,7 @@
 								if(get_dir(chassis,ore)&chassis.dir)
 									ore.Move(ore_box)
 				else if(target.loc == C)
-					log_message("Drilled through [target]")
+					log_message("Drilled through \the [target]")
 					target.ex_act(2)
 		return 1
 
@@ -138,8 +138,8 @@
 			if(target_obj.unacidable)	return
 		set_ready_state(0)
 		chassis.use_power(energy_drain)
-		chassis.visible_message("<span class='danger'>[chassis] starts to drill [target]</span>", "<span class='warning'>You hear the drill.</span>")
-		occupant_message("<span class='danger'>You start to drill [target]</span>")
+		chassis.visible_message("<span class='danger'>\The [chassis] starts to drill \the [target]</span>", "<span class='warning'>You hear a large drill.</span>")
+		occupant_message("<span class='danger'>You start to drill \the [target]</span>")
 		var/T = chassis.loc
 		var/C = target.loc	//why are these backwards? we may never know -Pete
 		if(do_after_cooldown(target))
@@ -147,13 +147,13 @@
 				if(istype(target, /turf/simulated/wall))
 					var/turf/simulated/wall/W = target
 					if(!W.reinf_material || do_after_cooldown(target))//To slow down how fast mechs can drill through the station
-						log_message("Drilled through [target]")
+						log_message("Drilled through \the [target]")
 						target.ex_act(3)
 				else if(istype(target, /turf/simulated/mineral))
 					for(var/turf/simulated/mineral/M in range(chassis,1))
 						if(get_dir(chassis,M)&chassis.dir)
 							M.GetDrilled()
-					log_message("Drilled through [target]")
+					log_message("Drilled through \the [target]")
 					if(locate(/obj/item/mecha_parts/mecha_equipment/tool/hydraulic_clamp) in chassis.equipment)
 						var/obj/structure/ore_box/ore_box = locate(/obj/structure/ore_box) in chassis:cargo
 						if(ore_box)
@@ -163,14 +163,14 @@
 				else if(istype(target,/turf/simulated/floor/asteroid))
 					for(var/turf/simulated/floor/asteroid/M in range(target,1))
 						M.gets_dug()
-					log_message("Drilled through [target]")
+					log_message("Drilled through \the [target]")
 					if(locate(/obj/item/mecha_parts/mecha_equipment/tool/hydraulic_clamp) in chassis.equipment)
 						var/obj/structure/ore_box/ore_box = locate(/obj/structure/ore_box) in chassis:cargo
 						if(ore_box)
 							for(var/obj/item/weapon/ore/ore in range(target,1))
 								ore.Move(ore_box)
 				else if(target.loc == C)
-					log_message("Drilled through [target]")
+					log_message("Drilled through \the [target]")
 					target.ex_act(2)
 		return 1
 
@@ -221,7 +221,7 @@
 
 			for(var/a = 1 to 5)
 				spawn(0)
-					var/obj/effect/effect/water/W = PoolOrNew(/obj/effect/effect/water, get_turf(chassis))
+					var/obj/effect/effect/water/W = new /obj/effect/effect/water(get_turf(chassis))
 					var/turf/my_target
 					if(a == 1)
 						my_target = T
@@ -252,7 +252,7 @@
 	icon_state = "mecha_rcd"
 	origin_tech = list(TECH_MATERIAL = 4, TECH_BLUESPACE = 3, TECH_MAGNET = 4, TECH_POWER = 4)
 	equip_cooldown = 10
-	energy_drain = 250
+	energy_drain = 25 KILOWATTS
 	range = MELEE|RANGED
 	var/mode = 0 //0 - deconstruct, 1 - wall or floor, 2 - airlock.
 	var/disabled = 0 //malf
@@ -355,7 +355,7 @@
 	icon_state = "mecha_teleport"
 	origin_tech = list(TECH_BLUESPACE = 10)
 	equip_cooldown = 150
-	energy_drain = 1000
+	energy_drain = 200 KILOWATTS
 	range = RANGED
 
 	action(atom/target)
@@ -375,7 +375,7 @@
 	icon_state = "mecha_wholegen"
 	origin_tech = list(TECH_BLUESPACE = 3)
 	equip_cooldown = 50
-	energy_drain = 300
+	energy_drain = 50 KILOWATTS
 	range = RANGED
 
 
@@ -390,7 +390,7 @@
 		var/area/thearea = pick(theareas)
 		var/list/L = list()
 		var/turf/pos = get_turf(src)
-		for(var/turf/T in get_area_turfs(thearea.type))
+		for(var/turf/T in get_area_turfs(thearea))
 			if(!T.density && pos.z == T.z)
 				var/clear = 1
 				for(var/obj/O in T)
@@ -425,7 +425,7 @@
 	icon_state = "mecha_teleport"
 	origin_tech = list(TECH_BLUESPACE = 2, TECH_MAGNET = 3)
 	equip_cooldown = 10
-	energy_drain = 100
+	energy_drain = 10 KILOWATTS
 	range = MELEE|RANGED
 	var/atom/movable/locked
 	var/mode = 1 //1 - gravsling 2 - gravpush
@@ -500,7 +500,7 @@
 	desc = "Powered armor-enhancing mech equipment."
 	icon_state = "mecha_abooster_proj"
 	equip_cooldown = 10
-	energy_drain = 50
+	energy_drain = 5 KILOWATTS
 	range = 0
 	var/deflect_coeff = 1
 	var/damage_coeff = 1
@@ -590,7 +590,7 @@
 	icon_state = "repair_droid"
 	origin_tech = list(TECH_MAGNET = 3, TECH_DATA = 3)
 	equip_cooldown = 20
-	energy_drain = 100
+	energy_drain = 10 KILOWATTS
 	range = 0
 	var/health_boost = 2
 	var/datum/global_iterator/pr_repair_droid
@@ -777,7 +777,7 @@
 	var/max_fuel = 150000
 	var/fuel_per_cycle_idle = 100
 	var/fuel_per_cycle_active = 500
-	var/power_per_cycle = 20
+	var/power_per_cycle = 1 KILOWATTS
 
 	New()
 		..()
@@ -908,7 +908,7 @@
 	max_fuel = 50000
 	fuel_per_cycle_idle = 10
 	fuel_per_cycle_active = 30
-	power_per_cycle = 50
+	power_per_cycle = 5 KILOWATTS
 	var/rad_per_cycle = 0.3
 
 	init()
@@ -926,10 +926,7 @@
 	process(var/obj/item/mecha_parts/mecha_equipment/generator/nuclear/EG)
 		if(..())
 			for(var/mob/living/carbon/M in view(EG.chassis))
-				if(istype(M,/mob/living/carbon/human))
-					M.apply_effect((EG.rad_per_cycle*3),IRRADIATE,0)
-				else
-					M.apply_effect(EG.rad_per_cycle, IRRADIATE)
+				M.apply_effect((EG.rad_per_cycle*3),IRRADIATE, blocked = M.getarmor(null, "rad"))
 		return 1
 
 
@@ -1000,7 +997,7 @@
 	desc = "A mountable passenger compartment for exo-suits. Rather cramped."
 	icon_state = "mecha_abooster_ccw"
 	origin_tech = list(TECH_ENGINEERING = 1, TECH_BIO = 1)
-	energy_drain = 10
+	energy_drain = 1 KILOWATTS
 	range = MELEE
 	equip_cooldown = 20
 	var/mob/living/carbon/occupant = null
@@ -1020,12 +1017,12 @@
 	if (chassis)
 		chassis.visible_message("<span class='notice'>[user] starts to climb into [chassis].</span>")
 
-	if(do_after(user, 40, needhand=0))
+	if(do_after(user, 40, src, needhand=0))
 		if(!src.occupant)
 			user.forceMove(src)
 			occupant = user
-			log_message("[user] boarded.")
-			occupant_message("[user] boarded.")
+			log_message("\The [user] boarded.")
+			occupant_message("\The [user] boarded.")
 		else if(src.occupant != user)
 			user << "<span class='warning'>[src.occupant] was faster. Try better next time, loser.</span>"
 	else

@@ -212,7 +212,7 @@
 		else
 			user.visible_message("<span class='danger'>[user] is removing the electronics from \the [src].</span>",
 									"You start to remove the electronics from [src].")
-			if(do_after(user,30))
+			if(do_after(user,30,src))
 				if(blocked && density && hatch_open)
 					playsound(src.loc, 'sound/items/Crowbar.ogg', 100, 1)
 					user.visible_message("<span class='danger'>[user] has removed the electronics from \the [src].</span>",
@@ -253,7 +253,7 @@
 		user.visible_message("<span class='danger'>\The [user] starts to force \the [src] [density ? "open" : "closed"] with \a [C]!</span>",\
 				"You start forcing \the [src] [density ? "open" : "closed"] with \the [C]!",\
 				"You hear metal strain.")
-		if(do_after(user,30))
+		if(do_after(user,30,src))
 			if(istype(C, /obj/item/weapon/crowbar))
 				if(stat & (BROKEN|NOPOWER) || !density)
 					user.visible_message("<span class='danger'>\The [user] forces \the [src] [density ? "open" : "closed"] with \a [C]!</span>",\
@@ -363,6 +363,9 @@
 
 /obj/machinery/door/firedoor/update_icon()
 	overlays.Cut()
+	set_light(0)
+	var/do_set_light = FALSE
+
 	if(density)
 		icon_state = "door_closed"
 		if(hatch_open)
@@ -371,17 +374,21 @@
 			overlays += "welded"
 		if(pdiff_alert)
 			overlays += "palert"
+			do_set_light = TRUE
 		if(dir_alerts)
 			for(var/d=1;d<=4;d++)
 				var/cdir = cardinal[d]
 				for(var/i=1;i<=ALERT_STATES.len;i++)
 					if(dir_alerts[d] & (1<<(i-1)))
 						overlays += new/icon(icon,"alert_[ALERT_STATES[i]]", dir=cdir)
+						do_set_light = TRUE
 	else
 		icon_state = "door_open"
 		if(blocked)
 			overlays += "welded_open"
-	return
+
+	if(do_set_light)
+		set_light(1.5, 0.5, COLOR_SUN)
 
 //These are playing merry hell on ZAS.  Sorry fellas :(
 

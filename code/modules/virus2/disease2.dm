@@ -45,7 +45,7 @@
 	var/list/res = list()
 	for (var/specie in all_species)
 		var/datum/species/S = all_species[specie]
-		if(!S.virus_immune)
+		if(!S.get_virus_immune())
 			meat += S
 	if(meat.len)
 		var/num = rand(1,meat.len)
@@ -71,7 +71,7 @@
 
 	// Some species are flat out immune to organic viruses.
 	var/mob/living/carbon/human/H = mob
-	if(istype(H) && H.species.virus_immune)
+	if(istype(H) && H.species.get_virus_immune(H))
 		cure(mob)
 		return
 
@@ -210,7 +210,7 @@ var/global/list/virusDB = list()
 	<u>Antigen:</u> [antigens2string(antigen)]<br>
 	<u>Transmitted By:</u> [spreadtype]<br>
 	<u>Rate of Progression:</u> [stageprob * 10]<br>
-	<u>Species Affected:</u> [list2text(affected_species, ", ")]<br>
+	<u>Species Affected:</u> [jointext(affected_species, ", ")]<br>
 "}
 
 	r += "<u>Symptoms:</u><br>"

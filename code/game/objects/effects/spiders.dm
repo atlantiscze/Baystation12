@@ -1,7 +1,7 @@
 //generic procs copied from obj/effect/alien
 /obj/effect/spider
 	name = "web"
-	desc = "it's stringy and sticky"
+	desc = "It's stringy and sticky."
 	icon = 'icons/effects/effects.dmi'
 	anchored = 1
 	density = 0
@@ -21,6 +21,8 @@
 	return
 
 /obj/effect/spider/attackby(var/obj/item/weapon/W, var/mob/user)
+	user.setClickCooldown(DEFAULT_ATTACK_COOLDOWN)
+
 	if(W.attack_verb.len)
 		visible_message("<span class='warning'>\The [src] have been [pick(W.attack_verb)] with \the [W][(user ? " by [user]." : ".")]</span>")
 	else
@@ -72,7 +74,7 @@
 
 /obj/effect/spider/eggcluster
 	name = "egg cluster"
-	desc = "They seem to pulse slightly with an inner life"
+	desc = "They seem to pulse slightly with an inner life."
 	icon_state = "eggs"
 	var/amount_grown = 0
 	New()
@@ -101,7 +103,7 @@
 			O = loc
 
 		for(var/i=0, i<num, i++)
-			var/spiderling = PoolOrNew(/obj/effect/spider/spiderling, list(src.loc, src))
+			var/spiderling = new /obj/effect/spider/spiderling(loc, src)
 			if(O)
 				O.implants += spiderling
 		qdel(src)
@@ -109,16 +111,19 @@
 /obj/effect/spider/spiderling
 	name = "spiderling"
 	desc = "It never stays still for long."
-	icon_state = "spiderling"
+	icon_state = "guard"
 	anchored = 0
 	layer = 2.7
 	health = 3
+	var/mob/living/simple_animal/hostile/giant_spider/greater_form
 	var/last_itch = 0
 	var/amount_grown = -1
 	var/obj/machinery/atmospherics/unary/vent_pump/entry_vent
 	var/travelling_in_vent = 0
 
 /obj/effect/spider/spiderling/New(var/location, var/atom/parent)
+	greater_form = pick(typesof(/mob/living/simple_animal/hostile/giant_spider))
+	icon_state = initial(greater_form.icon_state)
 	pixel_x = rand(6,-6)
 	pixel_y = rand(6,-6)
 	processing_objects |= src
@@ -140,7 +145,7 @@
 
 /obj/effect/spider/spiderling/proc/die()
 	visible_message("<span class='alert'>[src] dies!</span>")
-	PoolOrNew(/obj/effect/decal/cleanable/spiderling_remains, src.loc)
+	new /obj/effect/decal/cleanable/spiderling_remains(loc)
 	qdel(src)
 
 /obj/effect/spider/spiderling/healthcheck()
@@ -209,8 +214,7 @@
 					break
 
 		if(amount_grown >= 100)
-			var/spawn_type = pick(typesof(/mob/living/simple_animal/hostile/giant_spider))
-			new spawn_type(src.loc, src)
+			new greater_form(src.loc, src)
 			qdel(src)
 	else if(isorgan(loc))
 		if(!amount_grown) amount_grown = 1
@@ -220,16 +224,16 @@
 			src.loc = O.owner ? O.owner.loc : O.loc
 			src.visible_message("<span class='warning'>\A [src] makes its way out of [O.owner ? "[O.owner]'s [O.name]" : "\the [O]"]!</span>")
 			if(O.owner)
-				O.owner.apply_damage(1, BRUTE, O.limb_name)
+				O.owner.apply_damage(1, BRUTE, O.organ_tag)
 		else if(prob(1))
-			O.owner.apply_damage(1, TOX, O.limb_name)
+			O.owner.apply_damage(1, TOX, O.organ_tag)
 			if(world.time > last_itch + 30 SECONDS)
 				last_itch = world.time
 				O.owner << "<span class='notice'>Your [O.name] itches...</span>"
 	else if(prob(1))
 		src.visible_message("<span class='notice'>\The [src] skitters.</span>")
 
-	if(amount_grown)
+	if(amount_grown > 0)
 		amount_grown += rand(0,2)
 
 /obj/effect/decal/cleanable/spiderling_remains
@@ -237,10 +241,11 @@
 	desc = "Green squishy mess."
 	icon = 'icons/effects/effects.dmi'
 	icon_state = "greenshatter"
+	anchored = 1
 
 /obj/effect/spider/cocoon
 	name = "cocoon"
-	desc = "Something wrapped in silky spider web"
+	desc = "Something wrapped in silky spider web."
 	icon_state = "cocoon1"
 	health = 60
 

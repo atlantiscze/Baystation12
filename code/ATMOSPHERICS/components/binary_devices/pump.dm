@@ -18,7 +18,7 @@ Thus, the two variables affect pump operation are set in New():
 	level = 1
 
 	name = "gas pump"
-	desc = "A pump"
+	desc = "A pump."
 
 	var/target_pressure = ONE_ATMOSPHERE
 
@@ -209,12 +209,6 @@ Thus, the two variables affect pump operation are set in New():
 
 	src.update_icon()
 
-/obj/machinery/atmospherics/binary/pump/power_change()
-	var/old_stat = stat
-	..()
-	if(old_stat != stat)
-		update_icon()
-
 /obj/machinery/atmospherics/binary/pump/attackby(var/obj/item/weapon/W as obj, var/mob/user as mob)
 	if (!istype(W, /obj/item/weapon/wrench))
 		return ..()
@@ -229,7 +223,7 @@ Thus, the two variables affect pump operation are set in New():
 		return 1
 	playsound(src.loc, 'sound/items/Ratchet.ogg', 50, 1)
 	user << "<span class='notice'>You begin to unfasten \the [src]...</span>"
-	if (do_after(user, 40))
+	if (do_after(user, 40, src))
 		user.visible_message( \
 			"<span class='notice'>\The [user] unfastens \the [src].</span>", \
 			"<span class='notice'>You have unfastened \the [src].</span>", \

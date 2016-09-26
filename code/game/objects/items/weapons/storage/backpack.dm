@@ -20,10 +20,15 @@
 	sprite_sheets = list(
 		"Resomi" = 'icons/mob/species/resomi/back.dmi'
 		)
-	w_class = 4
+	w_class = 5
 	slot_flags = SLOT_BACK
-	max_w_class = 3
-	max_storage_space = 28
+	max_w_class = 4
+	max_storage_space = DEFAULT_BACKPACK_STORAGE
+	
+/obj/item/weapon/storage/backpack/equipped()
+	if(!has_extension(src, /datum/extension/appearance))
+		set_extension(src, /datum/extension/appearance, /datum/extension/appearance/cardborg)
+	..()
 
 /obj/item/weapon/storage/backpack/attackby(obj/item/weapon/W as obj, mob/user as mob)
 	if (src.use_sound)
@@ -36,13 +41,6 @@
 	..(user, slot)
 
 /*
-/obj/item/weapon/storage/backpack/dropped(mob/user as mob)
-	if (loc == user && src.use_sound)
-		playsound(src.loc, src.use_sound, 50, 1, -5)
-	..(user)
-*/
-
-/*
  * Backpack Types
  */
 
@@ -51,7 +49,7 @@
 	desc = "A backpack that opens into a localized pocket of Blue Space."
 	origin_tech = list(TECH_BLUESPACE = 4)
 	icon_state = "holdingpack"
-	max_w_class = 4
+	max_w_class = 3
 	max_storage_space = 56
 
 	New()
@@ -73,11 +71,10 @@
 
 /obj/item/weapon/storage/backpack/santabag
 	name = "\improper Santa's gift bag"
-	desc = "Space Santa uses this to deliver toys to all the nice children in space in Christmas! Wow, it's pretty big!"
+	desc = "Space Santa uses this to deliver toys to all the nice children in space for Christmas! Wow, it's pretty big!"
 	icon_state = "giftbag0"
 	item_state = "giftbag"
-	w_class = 4.0
-	storage_slots = 20
+	w_class = 5
 	max_w_class = 3
 	max_storage_space = 400 // can store a ton of shit!
 	item_state_slots = null
@@ -141,6 +138,61 @@
 	name = "chemistry backpack"
 	desc = "It's an orange backpack which was designed to hold beakers, pill bottles and bottles."
 	icon_state = "chempack"
+
+/*
+ * Duffle Types
+ */
+
+/obj/item/weapon/storage/backpack/dufflebag
+	name = "dufflebag"
+	desc = "A large dufflebag for holding extra things."
+	icon_state = "duffle"
+	item_state_slots = null
+	w_class = 5
+	max_storage_space = DEFAULT_BACKPACK_STORAGE + 10
+
+/obj/item/weapon/storage/backpack/dufflebag/New()
+	..()
+	slowdown_per_slot[slot_back] = 3
+
+/obj/item/weapon/storage/backpack/dufflebag/syndie
+	name = "black dufflebag"
+	desc = "A large dufflebag for holding extra tactical supplies."
+	icon_state = "duffle_syndie"
+
+/obj/item/weapon/storage/backpack/dufflebag/syndie/New()
+	..()
+	slowdown_per_slot[slot_back] = 1
+
+/obj/item/weapon/storage/backpack/dufflebag/syndie/med
+	name = "medical dufflebag"
+	desc = "A large dufflebag for holding extra tactical medical supplies."
+	icon_state = "duffle_syndiemed"
+
+/obj/item/weapon/storage/backpack/dufflebag/syndie/ammo
+	name = "ammunition dufflebag"
+	desc = "A large dufflebag for holding extra weapons ammunition and supplies."
+	icon_state = "duffle_syndieammo"
+
+/obj/item/weapon/storage/backpack/dufflebag/captain
+	name = "captain's dufflebag"
+	desc = "A large dufflebag for holding extra captainly goods."
+	icon_state = "duffle_captain"
+
+/obj/item/weapon/storage/backpack/dufflebag/med
+	name = "medical dufflebag"
+	desc = "A large dufflebag for holding extra medical supplies."
+	icon_state = "duffle_med"
+
+/obj/item/weapon/storage/backpack/dufflebag/sec
+	name = "security dufflebag"
+	desc = "A large dufflebag for holding extra security supplies and ammunition."
+	icon_state = "duffle_sec"
+
+/obj/item/weapon/storage/backpack/dufflebag/eng
+	name = "industrial dufflebag"
+	desc = "A large dufflebag for holding extra tools and supplies."
+	icon_state = "duffle_eng"
 
 /*
  * Satchel Types

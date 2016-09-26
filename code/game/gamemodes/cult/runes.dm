@@ -159,18 +159,18 @@ var/list/sacrificed = list()
 							target << "<span class='cult'>Your entire broken soul and being is engulfed in corruption and flames as your mind shatters away into nothing.</span>"
 							target.hallucination += 5000
 							target.apply_effect(15, STUTTER)
-							target.adjustBrainLoss(rand(1,5))
+							target.adjustBrainLoss(1)
 
 				initial_message = 1
-				if (target.species && (target.species.flags & NO_PAIN))
-					target.visible_message("<span class='warning'>The markings below [target] glow a bloody red.</span>")
+				if (!target.can_feel_pain())
+					target.visible_message("<span class='warning'>The markings below \the [target] glow a bloody red.</span>")
 				else
 					target.visible_message("<span class='warning'>[target] writhes in pain as the markings below \him glow a bloody red.</span>", "<span class='danger'>AAAAAAHHHH!</span>", "<span class='warning'>You hear an anguished scream.</span>")
 
 				if(!waiting_for_input[target]) //so we don't spam them with dialogs if they hesitate
 					waiting_for_input[target] = 1
 
-					if(!cult.can_become_antag(target.mind) || jobban_isbanned(target, "cultist"))//putting jobban check here because is_convertable uses mind as argument
+					if(!cult.can_become_antag(target.mind) || jobban_isbanned(target, MODE_CULTIST))//putting jobban check here because is_convertable uses mind as argument
 						//waiting_for_input ensures this is only shown once, so they basically auto-resist from here on out. They still need to find a way to get off the freaking rune if they don't want to burn to death, though.
 						target << "<span class='cult'>Your blood pulses. Your head throbs. The world goes red. All at once you are aware of a horrible, horrible truth. The veil of reality has been ripped away and in the festering wound left behind something sinister takes root.</span>"
 						target << "<span class='danger'>And you were able to force it out of your mind. You now know the truth, there's something horrible out there, stop it and its minions at all costs.</span>"
@@ -328,8 +328,8 @@ var/list/sacrificed = list()
 					usr << "<span class='warning'>The sacrifical corpse is not dead. You must free it from this world of illusions before it may be used.</span>"
 				return fizzle()
 
-			var/mob/dead/observer/ghost
-			for(var/mob/dead/observer/O in loc)
+			var/mob/observer/ghost/ghost
+			for(var/mob/observer/ghost/O in loc)
 				if(!O.client)	continue
 				if(O.mind && O.mind.current && O.mind.current.stat != DEAD)	continue
 				ghost = O
@@ -409,7 +409,7 @@ var/list/sacrificed = list()
 						L.ajourn=0
 						return
 					else
-						L.take_organ_damage(10, 0)
+						L.take_organ_damage(3, 0)
 					sleep(100)
 			return fizzle()
 
@@ -423,8 +423,8 @@ var/list/sacrificed = list()
 			src = null
 			if(usr.loc!=this_rune.loc)
 				return this_rune.fizzle()
-			var/mob/dead/observer/ghost
-			for(var/mob/dead/observer/O in this_rune.loc)
+			var/mob/observer/ghost/ghost
+			for(var/mob/observer/ghost/O in this_rune.loc)
 				if(!O.client)	continue
 				if(!O.MayRespawn()) continue
 				if(O.mind && O.mind.current && O.mind.current.stat != DEAD)	continue
@@ -432,7 +432,7 @@ var/list/sacrificed = list()
 				break
 			if(!ghost)
 				return this_rune.fizzle()
-			if(jobban_isbanned(ghost, "cultist"))
+			if(jobban_isbanned(ghost, MODE_CULTIST))
 				return this_rune.fizzle()
 
 			usr.say("Gal'h'rfikk harfrandid mud[pick("'","`")]gib!")
@@ -454,7 +454,7 @@ var/list/sacrificed = list()
 			D.r_eyes = 200
 			D.g_eyes = 200
 			D.update_eyes()
-			D.underwear = 0
+			D.all_underwear.Cut()
 			D.key = ghost.key
 			cult.add_antagonist(D.mind)
 
@@ -617,13 +617,13 @@ var/list/sacrificed = list()
 					if(!(iscultist(V)))
 						victims += V//Checks for cult status and mob type
 			for(var/obj/item/I in src.loc)//Checks for MMIs/brains/Intellicards
-				if(istype(I,/obj/item/organ/brain))
-					var/obj/item/organ/brain/B = I
+				if(istype(I,/obj/item/organ/internal/brain))
+					var/obj/item/organ/internal/brain/B = I
 					victims += B.brainmob
 				else if(istype(I,/obj/item/device/mmi))
 					var/obj/item/device/mmi/B = I
 					victims += B.brainmob
-				else if(istype(I,/obj/item/device/aicard))
+				else if(istype(I,/obj/item/weapon/aicard))
 					for(var/mob/living/silicon/ai/A in I)
 						victims += A
 			for(var/mob/living/carbon/C in orange(1,src))
@@ -655,7 +655,6 @@ var/list/sacrificed = list()
 							if(H.stat !=2)
 								if(prob(80) || worth)
 									usr << "<span class='cult'>The Geometer of Blood accepts this [worth ? "exotic " : ""]sacrifice.</span>"
-									cult.grant_runeword(usr)
 								else
 									usr << "<span class='cult'>The Geometer of Blood accepts this sacrifice.</span>"
 									usr << "<span class='warning'>However, this soul was not enough to gain His favor.</span>"
@@ -666,7 +665,6 @@ var/list/sacrificed = list()
 							else
 								if(prob(40) || worth)
 									usr << "<span class='cult'>The Geometer of Blood accepts this [worth ? "exotic " : ""]sacrifice.</span>"
-									cult.grant_runeword(usr)
 								else
 									usr << "<span class='cult'>The Geometer of Blood accepts this sacrifice.</span>"
 									usr << "<span class='warning'>However, a mere dead body is not enough to satisfy Him.</span>"
@@ -681,7 +679,6 @@ var/list/sacrificed = list()
 								if(prob(40))
 
 									usr << "<span class='cult'>The Geometer of Blood accepts this sacrifice.</span>"
-									cult.grant_runeword(usr)
 								else
 									usr << "<span class='cult'>The Geometer of Blood accepts this sacrifice.</span>"
 									usr << "<span class='warning'>However, a mere dead body is not enough to satisfy Him.</span>"
@@ -694,7 +691,6 @@ var/list/sacrificed = list()
 						if(H.stat !=2)
 							if(prob(80))
 								usr << "<span class='cult'>The Geometer of Blood accepts this sacrifice.</span>"
-								cult.grant_runeword(usr)
 							else
 								usr << "<span class='cult'>The Geometer of Blood accepts this sacrifice.</span>"
 								usr << "<span class='warning'>However, this soul was not enough to gain His favor.</span>"
@@ -705,7 +701,6 @@ var/list/sacrificed = list()
 						else
 							if(prob(40))
 								usr << "<span class='cult'>The Geometer of Blood accepts this sacrifice.</span>"
-								cult.grant_runeword(usr)
 							else
 								usr << "<span class='cult'>The Geometer of Blood accepts this sacrifice.</span>"
 								usr << "<span class='warning'>However, a mere dead body is not enough to satisfy Him.</span>"
@@ -719,7 +714,6 @@ var/list/sacrificed = list()
 						else
 							if(prob(40))
 								usr << "<span class='cult'>The Geometer of Blood accepts this sacrifice.</span>"
-								cult.grant_runeword(usr)
 							else
 								usr << "<span class='cult'>The Geometer of Blood accepts this sacrifice.</span>"
 								usr << "<span class='warning'>However, a mere dead body is not enough to satisfy Him.</span>"
@@ -1036,7 +1030,7 @@ var/list/sacrificed = list()
 				for(var/mob/living/L in viewers(src))
 					if(iscarbon(L))
 						var/mob/living/carbon/C = L
-						flick("e_flash", C.flash)
+						C.flash_eyes()
 						if(C.stuttering < 1 && (!(HULK in C.mutations)))
 							C.stuttering = 1
 						C.Weaken(1)
@@ -1065,7 +1059,7 @@ var/list/sacrificed = list()
 						admin_attack_log(usr, T, "Used a stun rune.", "Was victim of a stun rune.", "used a stun rune on")
 					else if(iscarbon(T))
 						var/mob/living/carbon/C = T
-						flick("e_flash", C.flash)
+						C.flash_eyes()
 						if (!(HULK in C.mutations))
 							C.silent += 15
 						C.Weaken(25)

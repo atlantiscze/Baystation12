@@ -2,7 +2,7 @@
 
 /obj/machinery/lapvend
 	name = "computer vendor"
-	desc = "A vending machine with microfabricator capable of dispensing various NT-branded computers"
+	desc = "A vending machine with microfabricator capable of dispensing various NT-branded computers."
 	icon = 'icons/obj/vending.dmi'
 	icon_state = "robotics"
 	layer = 2.9
@@ -19,6 +19,7 @@
 	var/total_price = 0						// Price of currently vended device.
 
 	// Device loadout
+	var/dev_cpu = 1							// 1: Default, 2: Upgraded
 	var/dev_battery = 1						// 1: Default, 2: Upgraded, 3: Advanced
 	var/dev_disk = 1						// 1: Default, 2: Upgraded, 3: Advanced
 	var/dev_netcard = 0						// 0: None, 1: Basic, 2: Long-Range
@@ -36,6 +37,7 @@
 	if(fabricated_tablet)
 		qdel(fabricated_tablet)
 		fabricated_tablet = null
+	dev_cpu = 1
 	dev_battery = 1
 	dev_disk = 1
 	dev_netcard = 0
@@ -50,17 +52,25 @@
 		if(fabricate)
 			fabricated_laptop = new(src)
 		total_price = 99
+		switch(dev_cpu)
+			if(1)
+				if(fabricate)
+					fabricated_laptop.cpu.processor_unit = new/obj/item/weapon/computer_hardware/processor_unit/small(fabricated_laptop.cpu)
+			if(2)
+				if(fabricate)
+					fabricated_laptop.cpu.processor_unit = new/obj/item/weapon/computer_hardware/processor_unit(fabricated_laptop.cpu)
+				total_price += 299
 		switch(dev_battery)
 			if(1) // Basic(750C)
 				if(fabricate)
-					fabricated_laptop.cpu.battery_module = new/obj/item/weapon/computer_hardware/battery_module(fabricated_tablet)
+					fabricated_laptop.cpu.battery_module = new/obj/item/weapon/computer_hardware/battery_module(fabricated_laptop.cpu)
 			if(2) // Upgraded(1100C)
 				if(fabricate)
-					fabricated_laptop.cpu.battery_module = new/obj/item/weapon/computer_hardware/battery_module/advanced(fabricated_tablet)
+					fabricated_laptop.cpu.battery_module = new/obj/item/weapon/computer_hardware/battery_module/advanced(fabricated_laptop.cpu)
 				total_price += 199
 			if(3) // Advanced(1500C)
 				if(fabricate)
-					fabricated_laptop.cpu.battery_module = new/obj/item/weapon/computer_hardware/battery_module/super(fabricated_tablet)
+					fabricated_laptop.cpu.battery_module = new/obj/item/weapon/computer_hardware/battery_module/super(fabricated_laptop.cpu)
 				total_price += 499
 		switch(dev_disk)
 			if(1) // Basic(128GQ)
@@ -100,6 +110,7 @@
 	else if(devtype == 2) 	// Tablet, more expensive, not everyone could probably afford this.
 		if(fabricate)
 			fabricated_tablet = new(src)
+			fabricated_tablet.processor_unit = new/obj/item/weapon/computer_hardware/processor_unit/small(fabricated_tablet)
 		total_price = 199
 		switch(dev_battery)
 			if(1) // Basic(300C)
@@ -169,6 +180,10 @@
 		state = 2 // Wait for ID swipe for payment processing
 		fabricate_and_recalc_price(0)
 		return 1
+	if(href_list["hw_cpu"])
+		dev_cpu = text2num(href_list["hw_cpu"])
+		fabricate_and_recalc_price(0)
+		return 1
 	if(href_list["hw_battery"])
 		dev_battery = text2num(href_list["hw_battery"])
 		fabricate_and_recalc_price(0)
@@ -206,14 +221,17 @@
 
 	var/list/data[0]
 	data["state"] = state
-	data["devtype"] = devtype
-	data["hw_battery"] = dev_battery
-	data["hw_disk"] = dev_disk
-	data["hw_netcard"] = dev_netcard
-	data["hw_tesla"] = dev_tesla
-	data["hw_nanoprint"] = dev_nanoprint
-	data["hw_card"] = dev_card
-	data["totalprice"] = "[total_price]$"
+	if(state == 1)
+		data["devtype"] = devtype
+		data["hw_battery"] = dev_battery
+		data["hw_disk"] = dev_disk
+		data["hw_netcard"] = dev_netcard
+		data["hw_tesla"] = dev_tesla
+		data["hw_nanoprint"] = dev_nanoprint
+		data["hw_card"] = dev_card
+		data["hw_cpu"] = dev_cpu
+	if(state == 1 || state == 2)
+		data["totalprice"] = total_price
 
 	ui = nanomanager.try_update_ui(user, src, ui_key, ui, data, force_open)
 	if (!ui)
@@ -224,16 +242,18 @@
 
 
 obj/machinery/lapvend/attackby(obj/item/weapon/W as obj, mob/user as mob)
-	var/obj/item/weapon/card/id/I = W.GetID()
+	var/obj/item/weapon/card/id/I = W.GetIdCard()
 	// Awaiting payment state
 	if(state == 2)
 		if(process_payment(I,W))
 			fabricate_and_recalc_price(1)
 			if((devtype == 1) && fabricated_laptop)
+				fabricated_laptop.cpu.battery_module.charge_to_full()
 				fabricated_laptop.forceMove(src.loc)
 				fabricated_laptop.close_laptop()
 				fabricated_laptop = null
 			else if((devtype == 2) && fabricated_tablet)
+				fabricated_tablet.battery_module.charge_to_full()
 				fabricated_tablet.forceMove(src.loc)
 				fabricated_tablet = null
 			ping("Enjoy your new product!")
@@ -273,6 +293,6 @@ obj/machinery/lapvend/attackby(obj/item/weapon/W as obj, mob/user as mob)
 		T.amount = total_price
 		T.source_terminal = src.name
 		T.date = current_date_string
-		T.time = worldtime2text()
+		T.time = stationtime2text()
 		customer_account.transaction_log.Add(T)
 		return 1

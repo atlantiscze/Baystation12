@@ -2,6 +2,7 @@
 	name = "Construct"
 	real_name = "Construct"
 	desc = ""
+	speak = list("Hsssssssszsht.", "Hsssssssss...", "Tcshsssssssszht!")
 	speak_emote = list("hisses")
 	emote_hear = list("wails","screeches")
 	response_help  = "thinks better of touching"
@@ -27,6 +28,7 @@
 	show_stat_health = 1
 	faction = "cult"
 	supernatural = 1
+	see_in_dark = 8
 	see_invisible = SEE_INVISIBLE_NOLIGHTING
 	var/nullblock = 0
 
@@ -93,6 +95,7 @@
 	icon_living = "behemoth"
 	maxHealth = 250
 	health = 250
+	speak_emote = list("rumbles")
 	response_harm   = "harmlessly punches"
 	harm_intent_damage = 0
 	melee_damage_lower = 30

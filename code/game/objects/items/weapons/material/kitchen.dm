@@ -7,13 +7,14 @@
 /obj/item/weapon/material/kitchen/utensil
 	w_class = 1
 	thrown_force_divisor = 1
-	origin_tech = "materials=1"
+	origin_tech = list(TECH_MATERIAL = 1)
 	attack_verb = list("attacked", "stabbed", "poked")
-	sharp = 1
-	edge = 1
+	sharp = 0
+	edge = 0
 	force_divisor = 0.1 // 6 when wielded with hardness 60 (steel)
 	thrown_force_divisor = 0.25 // 5 when thrown with weight 20 (steel)
 	var/loaded      //Descriptive string for currently loaded food object.
+	var/scoop_food = 1
 
 /obj/item/weapon/material/kitchen/utensil/New()
 	..()
@@ -27,7 +28,7 @@
 		return ..()
 
 	if(user.a_intent != I_HELP)
-		if(user.zone_sel.selecting == "head" || user.zone_sel.selecting == "eyes")
+		if(user.zone_sel.selecting == BP_HEAD || user.zone_sel.selecting == BP_EYES)
 			if((CLUMSY in user.mutations) && prob(50))
 				M = user
 			return eyestab(M,user)
@@ -65,8 +66,6 @@
 	desc = "It's a spoon. You can see your own upside-down face in it."
 	icon_state = "spoon"
 	attack_verb = list("attacked", "poked")
-	edge = 0
-	sharp = 0
 	force_divisor = 0.1 //2 when wielded with weight 20 (steel)
 
 /obj/item/weapon/material/kitchen/utensil/spoon/plastic
@@ -80,6 +79,9 @@
 	desc = "A knife for eating with. Can cut through any food."
 	icon_state = "knife"
 	force_divisor = 0.1 // 6 when wielded with hardness 60 (steel)
+	scoop_food = 0
+	sharp = 1
+	edge = 1
 
 // Identical to the tactical knife but nowhere near as stabby.
 // Kind of like the toy esword compared to the real thing.

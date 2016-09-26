@@ -3,7 +3,7 @@
 	set category = null
 	set name = "Admin PM Mob"
 	if(!holder)
-		src << "<font color='red'>Error: Admin-PM-Context: Only administrators may use this command.</font>"
+		src << "<span class='warning'>Error: Admin-PM-Context: Only administrators may use this command.</span>"
 		return
 	if( !ismob(M) || !M.client )	return
 	cmd_admin_pm(M.client,null)
@@ -14,14 +14,14 @@
 	set category = "Admin"
 	set name = "Admin PM"
 	if(!holder)
-		src << "<font color='red'>Error: Admin-PM-Panel: Only administrators may use this command.</font>"
+		src << "<span class='warning'>Error: Admin-PM-Panel: Only administrators may use this command.</span>"
 		return
 	var/list/client/targets[0]
 	for(var/client/T)
 		if(T.mob)
-			if(istype(T.mob, /mob/new_player))
+			if(isnewplayer(T.mob))
 				targets["(New Player) - [T]"] = T
-			else if(istype(T.mob, /mob/dead/observer))
+			else if(isghost(T.mob))
 				targets["[T.mob.name](Ghost) - [T]"] = T
 			else
 				targets["[T.mob.real_name](as [T.mob.name]) - [T]"] = T
@@ -38,12 +38,12 @@
 
 /client/proc/cmd_admin_pm(var/client/C, var/msg = null)
 	if(prefs.muted & MUTE_ADMINHELP)
-		src << "<font color='red'>Error: Private-Message: You are unable to use PM-s (muted).</font>"
+		src << "<span class='warning'>Error: Private-Message: You are unable to use PM-s (muted).</span>"
 		return
 
 	if(!istype(C,/client))
-		if(holder)	src << "<font color='red'>Error: Private-Message: Client not found.</font>"
-		else		src << "<font color='red'>Error: Private-Message: Client not found. They may have lost connection, so try using an adminhelp!</font>"
+		if(holder)	src << "<span class='warning'>Error: Private-Message: Client not found.</span>"
+		else		src << "<span class='warning'>Error: Private-Message: Client not found. They may have lost connection, so try using an adminhelp!</span>"
 		return
 
 	//get message text, limit it's length.and clean/escape html
@@ -52,31 +52,21 @@
 
 		if(!msg)	return
 		if(!C)
-			if(holder)	src << "<font color='red'>Error: Admin-PM: Client not found.</font>"
-			else		src << "<font color='red'>Error: Private-Message: Client not found. They may have lost connection, so try using an adminhelp!</font>"
+			if(holder)	src << "<span class='warning'>Error: Admin-PM: Client not found.</span>"
+			else		src << "<span class='warning'>Error: Private-Message: Client not found. They may have lost connection, so try using an adminhelp!</span>"
 			return
 
-	if (src.handle_spam_prevention(msg,MUTE_ADMINHELP))
-		return
-
-	//clean the message if it's not sent by a high-rank admin
-	//todo: sanitize for all???
-	if(!check_rights(R_SERVER|R_DEBUG,0))
-		msg = sanitize(msg)
-		if(!msg)	return
+	msg = sanitize(msg)
 
 	var/recieve_pm_type = "Player"
 	if(holder)
 		//mod PMs are maroon
 		//PMs sent from admins and mods display their rank
 		if(holder)
-			if(!C.holder && holder && holder.fakekey)
-				recieve_pm_type = "Admin"
-			else
-				recieve_pm_type = holder.rank
+			recieve_pm_type = holder.rank
 
 	else if(!C.holder)
-		src << "<font color='red'>Error: Admin-PM: Non-admin to non-admin PM communication is forbidden.</font>"
+		src << "<span class='warning'>Error: Admin-PM: Non-admin to non-admin PM communication is forbidden.</span>"
 		return
 
 	var/recieve_message
@@ -104,11 +94,12 @@
 
 	//play the recieving admin the adminhelp sound (if they have them enabled)
 	//non-admins shouldn't be able to disable this
-	if(C.prefs && C.prefs.toggles & SOUND_ADMINHELP)
+	if(C.is_preference_enabled(/datum/client_preference/holder/play_adminhelp_ping))
 		C << 'sound/effects/adminhelp.ogg'
 
 	log_admin("PM: [key_name(src)]->[key_name(C)]: [msg]")
 	send2adminirc("Reply: [key_name(src)]->[key_name(C)]: [html_decode(msg)]")
+	admin_pm_repository.store_pm(src, C, msg)
 
 	//we don't use message_admins here because the sender/receiver might get it too
 	for(var/client/X in admins)
@@ -120,7 +111,7 @@
 
 /client/proc/cmd_admin_irc_pm(sender)
 	if(prefs.muted & MUTE_ADMINHELP)
-		src << "<font color='red'>Error: Private-Message: You are unable to use PM-s (muted).</font>"
+		src << "<span class='warning'>Error: Private-Message: You are unable to use PM-s (muted).</span>"
 		return
 
 	var/msg = input(src,"Message:", "Reply private message to [sender] on IRC / 400 character limit") as text|null
@@ -128,19 +119,21 @@
 	if(!msg)
 		return
 
-	sanitize(msg)
-
 	// Handled on Bot32's end, unsure about other bots
 //	if(length(msg) > 400) // TODO: if message length is over 400, divide it up into seperate messages, the message length restriction is based on IRC limitations.  Probably easier to do this on the bots ends.
 //		src << "<span class='warning'>Your message was not sent because it was more then 400 characters find your message below for ease of copy/pasting</span>"
 //		src << "<span class='notice'>[msg]</span>"
 //		return
 
-	send2adminirc("PlayerPM to [sender] from [key_name(src)]: [html_decode(msg)]")
+	var/rank = "Player"
+	if(holder)
+		rank = holder.rank
+	log_admin("PM: [key_name(src)]->IRC-[sender]: [msg]")
+	send2adminirc("[rank]PM to [sender] from [key_name(src)]: [html_decode(msg)]")
+	admin_pm_repository.store_pm(src, "IRC-[sender]", msg)
 
 	src << "<span class='pm'><span class='out'>" + create_text_tag("pm_out_alt", "", src) + " to <span class='name'>IRC-[sender]</span>: <span class='message'>[msg]</span></span></span>"
 
-	log_admin("PM: [key_name(src)]->IRC-[sender]: [msg]")
 	for(var/client/X in admins)
 		if(X == src)
 			continue

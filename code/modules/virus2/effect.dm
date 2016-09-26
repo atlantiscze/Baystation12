@@ -98,7 +98,7 @@
 	maxm = 3
 	badness = 2
 	activate(var/mob/living/carbon/mob,var/multiplier)
-		mob.apply_effect(2*multiplier, IRRADIATE, check_protection = 0)
+		mob.apply_effect(2*multiplier, IRRADIATE, blocked = 0)
 
 /datum/disease2/effect/deaf
 	name = "Dead Ear Syndrome"
@@ -115,19 +115,6 @@
 		if(istype(mob,/mob/living/carbon/human))
 			var/mob/living/carbon/human/h = mob
 			h.monkeyize()
-
-/datum/disease2/effect/suicide
-	name = "Suicidal Syndrome"
-	stage = 4
-	badness = 3
-	activate(var/mob/living/carbon/mob,var/multiplier)
-		mob.suiciding = 1
-		//instead of killing them instantly, just put them at -175 health and let 'em gasp for a while
-		viewers(mob) << "\red <b>[mob.name] is holding \his breath. It looks like \he's trying to commit suicide.</b>"
-		mob.adjustOxyLoss(175 - mob.getToxLoss() - mob.getFireLoss() - mob.getBruteLoss() - mob.getOxyLoss())
-		mob.updatehealth()
-		spawn(200) //in case they get revived by cryo chamber or something stupid like that, let them suicide again in 20 seconds
-			mob.suiciding = 0
 
 /datum/disease2/effect/killertoxins
 	name = "Toxification Syndrome"
@@ -152,7 +139,7 @@
 	activate(var/mob/living/carbon/mob,var/multiplier)
 		if(istype(mob, /mob/living/carbon/human))
 			var/mob/living/carbon/human/H = mob
-			var/organ = pick(list("r_arm","l_arm","r_leg","r_leg"))
+			var/organ = pick(list(BP_R_ARM,BP_L_ARM,BP_R_LEG,BP_L_LEG))
 			var/obj/item/organ/external/E = H.organs_by_name[organ]
 			if (!(E.status & ORGAN_DEAD))
 				E.status |= ORGAN_DEAD
@@ -237,11 +224,11 @@
 	activate(var/mob/living/carbon/mob,var/multiplier)
 		if(istype(mob, /mob/living/carbon/human))
 			var/mob/living/carbon/human/H = mob
-			var/obj/item/organ/brain/B = H.internal_organs_by_name["brain"]
+			var/obj/item/organ/internal/brain/B = H.internal_organs_by_name[BP_BRAIN]
 			if (B && B.damage < B.min_broken_damage)
 				B.take_damage(5)
 		else
-			mob.setBrainLoss(50)
+			mob.setBrainLoss(10)
 
 /datum/disease2/effect/hallucinations
 	name = "Hallucinational Syndrome"
@@ -292,7 +279,7 @@
 		else
 			data = pick("bicaridine", "kelotane", "anti_toxin", "inaprovaline", "space_drugs", "sugar",
 						"tramadol", "dexalin", "cryptobiolin", "impedrezene", "hyperzine", "ethylredoxrazine",
-						"mindbreaker", "nutriment")
+						"mindbreaker", "glucose")
 		var/datum/reagent/R = chemical_reagents_list[data]
 		name = "[initial(name)] ([initial(R.name)])"
 

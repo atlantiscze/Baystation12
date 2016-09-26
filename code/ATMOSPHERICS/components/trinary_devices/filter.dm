@@ -40,7 +40,7 @@
 	..()
 	switch(filter_type)
 		if(0) //removing hydrocarbons
-			filtered_out = list("phoron", "oxygen_agent_b")
+			filtered_out = list("phoron")
 		if(1) //removing O2
 			filtered_out = list("oxygen")
 		if(2) //removing N2
@@ -87,18 +87,12 @@
 /obj/machinery/atmospherics/trinary/filter/hide(var/i)
 	update_underlays()
 
-/obj/machinery/atmospherics/trinary/filter/power_change()
-	var/old_stat = stat
-	..()
-	if(old_stat != stat)
-		update_icon()
-
 /obj/machinery/atmospherics/trinary/filter/process()
 	..()
-	
+
 	last_power_draw = 0
 	last_flow_rate = 0
-	
+
 	if((stat & (NOPOWER|BROKEN)) || !use_power)
 		return
 
@@ -139,7 +133,7 @@
 		return 1
 	playsound(src.loc, 'sound/items/Ratchet.ogg', 50, 1)
 	user << "<span class='notice'>You begin to unfasten \the [src]...</span>"
-	if (do_after(user, 40))
+	if (do_after(user, 40, src))
 		user.visible_message( \
 			"<span class='notice'>\The [user] unfastens \the [src].</span>", \
 			"<span class='notice'>You have unfastened \the [src].</span>", \
@@ -206,7 +200,6 @@
 		switch(filter_type)
 			if(0) //removing hydrocarbons
 				filtered_out += "phoron"
-				filtered_out += "oxygen_agent_b"
 			if(1) //removing O2
 				filtered_out += "oxygen"
 			if(2) //removing N2

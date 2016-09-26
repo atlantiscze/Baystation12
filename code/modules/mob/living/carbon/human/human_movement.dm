@@ -1,48 +1,47 @@
 /mob/living/carbon/human/movement_delay()
-
-	var/tally = 0
+	var/tally = ..()
 
 	if(species.slowdown)
-		tally = species.slowdown
+		tally += species.slowdown
 
 	if (istype(loc, /turf/space)) return -1 // It's hard to be slowed down in space by... anything
 
-	if(embedded_flag)
-		handle_embedded_objects() //Moving with objects stuck in you can cause bad times.
+	if(embedded_flag || (stomach_contents && stomach_contents.len))
+		handle_embedded_and_stomach_objects() //Moving with objects stuck in you can cause bad times.
 
 	if(CE_SPEEDBOOST in chem_effects)
 		return -1
 
-	var/health_deficiency = (100 - health)
+	var/health_deficiency = (maxHealth - health)
 	if(health_deficiency >= 40) tally += (health_deficiency / 25)
 
-	if (!(species && (species.flags & NO_PAIN)))
+	if(can_feel_pain())
 		if(halloss >= 10) tally += (halloss / 10) //halloss shouldn't slow you down if you can't even feel it
 
 	var/hungry = (500 - nutrition)/5 // So overeat would be 100 and default level would be 80
 	if (hungry >= 70) tally += hungry/50
 
-	if(wear_suit)
-		tally += wear_suit.slowdown
-
 	if(istype(buckled, /obj/structure/bed/chair/wheelchair))
-		for(var/organ_name in list("l_hand","r_hand","l_arm","r_arm"))
+		for(var/organ_name in list(BP_L_HAND, BP_R_HAND, BP_L_ARM, BP_R_ARM))
 			var/obj/item/organ/external/E = get_organ(organ_name)
 			if(!E || E.is_stump())
 				tally += 4
-			if(E.status & ORGAN_SPLINTED)
+			if(E.splinted)
 				tally += 0.5
 			else if(E.status & ORGAN_BROKEN)
 				tally += 1.5
 	else
-		if(shoes)
-			tally += shoes.slowdown
+		for(var/slot = slot_first to slot_last)
+			var/obj/item/I = get_equipped_item(slot)
+			if(I)
+				tally += I.slowdown_general
+				tally += I.slowdown_per_slot[slot]
 
-		for(var/organ_name in list("l_foot","r_foot","l_leg","r_leg"))
+		for(var/organ_name in list(BP_L_LEG, BP_R_LEG, BP_L_FOOT, BP_R_FOOT))
 			var/obj/item/organ/external/E = get_organ(organ_name)
 			if(!E || E.is_stump())
 				tally += 4
-			else if(E.status & ORGAN_SPLINTED)
+			else if(E.splinted)
 				tally += 0.5
 			else if(E.status & ORGAN_BROKEN)
 				tally += 1.5
@@ -63,7 +62,7 @@
 
 	return (tally+config.human_delay)
 
-/mob/living/carbon/human/Process_Spacemove(var/check_drift = 0)
+/mob/living/carbon/human/Allow_Spacemove(var/check_drift = 0)
 	//Can we act?
 	if(restrained())	return 0
 
@@ -84,9 +83,7 @@
 			return 1
 
 	//If no working jetpack then use the other checks
-	if(..())
-		return 1
-	return 0
+	. = ..()
 
 
 /mob/living/carbon/human/slip_chance(var/prob_slip = 5)
@@ -95,9 +92,9 @@
 
 	//Check hands and mod slip
 	if(!l_hand)	prob_slip -= 2
-	else if(l_hand.w_class <= 2)	prob_slip -= 1
+	else if(l_hand.w_class <= SMALL_ITEM)	prob_slip -= 1
 	if (!r_hand)	prob_slip -= 2
-	else if(r_hand.w_class <= 2)	prob_slip -= 1
+	else if(r_hand.w_class <= SMALL_ITEM)	prob_slip -= 1
 
 	return prob_slip
 

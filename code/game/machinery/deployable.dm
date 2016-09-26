@@ -92,7 +92,7 @@ for reference:
 				user << "<span class='warning'>You need one sheet of [material.display_name] to repair \the [src].</span>"
 				return
 			visible_message("<span class='notice'>[user] begins to repair \the [src].</span>")
-			if(do_after(user,20) && health < maxhealth)
+			if(do_after(user,20,src) && health < maxhealth)
 				if (D.use(1))
 					health = maxhealth
 					visible_message("<span class='notice'>[user] repairs \the [src].</span>")
@@ -142,7 +142,7 @@ for reference:
 //Actual Deployable machinery stuff
 /obj/machinery/deployable
 	name = "deployable"
-	desc = "deployable"
+	desc = "Deployable."
 	icon = 'icons/obj/objects.dmi'
 	req_access = list(access_security)//I'm changing this until these are properly tested./N
 
@@ -237,9 +237,7 @@ for reference:
 
 		visible_message("<span class='danger'>[src] blows apart!</span>")
 		var/turf/Tsec = get_turf(src)
-
-	/*	var/obj/item/stack/rods/ =*/
-		PoolOrNew(/obj/item/stack/rods, Tsec)
+		new /obj/item/stack/rods(Tsec)
 
 		var/datum/effect/effect/system/spark_spread/s = new /datum/effect/effect/system/spark_spread
 		s.set_up(3, 1, src)
@@ -249,7 +247,7 @@ for reference:
 		if(src)
 			qdel(src)
 
-		
+
 /obj/machinery/deployable/barrier/emag_act(var/remaining_charges, var/mob/user)
 	if (src.emagged == 0)
 		src.emagged = 1
