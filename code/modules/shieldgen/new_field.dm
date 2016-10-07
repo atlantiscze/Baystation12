@@ -8,7 +8,7 @@
 	density = 1
 	invisibility = 0
 	var/obj/machinery/power/shield_generator/gen = null
-	var/overload_collapse = 0
+	var/disabled_for = 0
 	var/datum/effect/effect/system/spark_spread/s
 
 // Prevents shuttles, singularities and similar things from moving the field segments away.
