@@ -9,6 +9,7 @@
 	invisibility = 0
 	var/obj/machinery/power/shield_generator/gen = null
 	var/disabled_for = 0
+	var/diffused_for = 0
 	var/datum/effect/effect/system/spark_spread/s
 
 // Prevents shuttles, singularities and similar things from moving the field segments away.
@@ -44,12 +45,40 @@
 
 // Regenerates this shield segment.
 /obj/effect/shield/proc/regenerate()
+	if(!gen)
+		return
+
 	disabled_for = max(0, disabled_for - 1)
-	if(!disabled_for)
+	diffused_for = max(0, diffused_for - 1)
+
+	if(!disabled_for && !diffused_for)
 		density = 1
 		invisibility = 0
 		update_nearby_tiles()
 		gen.damaged_segments -= src
+
+
+/obj/effect/shield/proc/diffuse(var/duration)
+	// The shield is trying to counter diffusers. Cause lasting stress on the shield.
+	if(gen.check_mode(MODEFLAG_BYPASS) && !diffused_for && !disabled_for)
+		take_damage(damage * rand(8, 12), SHIELD_DAMTYPE_EM)
+		return
+
+	if(!diffused_for && !disabled_for)
+		s.set_up(1, 1, src)
+		s.start()
+
+	diffused_for = max(duration, 0)
+	gen.damaged_segments |= src
+	density = 0
+	invisibility = 101
+	update_nearby_tiles()
+
+
+
+/obj/effect/shield/attack_generic(var/source, var/damage, var/emote)
+	take_damage(damage, SHIELD_DAMTYPE_PHYSICAL)
+	..(source, damage, emote)
 
 
 // Fails shield segments in specific range. Range of 1 affects the shielded turf only.
@@ -203,3 +232,18 @@
 		qdel(M)
 		return 0
 	return ..()
+
+
+// Called when a flag is toggled. Can be used to add on-toggle behavior, such as visual changes.
+/obj/effect/shield/proc/flags_updated()
+	if(!gen)
+		return
+
+	// Update airflow
+	update_nearby_tiles()
+	update_icon()
+
+	// Photonic flag blocks vision
+	opacity = 0
+	if(gen.check_flag(MODEFLAG_PHOTONIC))
+		opacity = 1

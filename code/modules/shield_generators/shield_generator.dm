@@ -17,12 +17,13 @@
 	var/running = SHIELD_OFF			// Whether the generator is enabled or not.
 	var/input_cap = 1 MEGAWATT			// Currently set input limit. Set to 0 to disable limits altogether. The shield will try to input this value per tick at most
 	var/upkeep_power_usage = 0			// Upkeep power usage last tick.
+	var/upkeep_multiplier = 1			// Multiplier of upkeep values.
 	var/power_usage = 0					// Total power usage last tick.
 	var/overloaded = 0					// Whether the field has overloaded and shut down to regenerate.
+	var/hacked = 0						// Whether the generator is hacked and has special functions unlocked.
 
 /obj/machinery/power/shield_generator/New()
 	..()
-
 	component_parts = list()
 	component_parts += new /obj/item/weapon/circuitboard/shield_generator(src)
 	component_parts += new /obj/item/weapon/stock_parts/capacitor(src)			// Capacitor. Improves shield mitigation when better part is used.
@@ -65,12 +66,38 @@
 	mitigation_burn = 0
 
 
+// Recalculates and updates the upkeep multiplier
+/obj/machinery/power/shield_generator/proc/update_upkeep_multiplier()
+	var/new_upkeep = 1
+	if(check_flag(MODEFLAG_HYPERKINETIC))
+		new_upkeep *= MODEUSAGE_HYPERKINETIC
+	if(check_flag(MODEFLAG_PHOTONIC))
+		new_upkeep *= MODEUSAGE_PHOTONIC
+	if(check_flag(MODEFLAG_NONHUMANS))
+		new_upkeep *= MODEUSAGE_NONHUMANS
+	if(check_flag(MODEFLAG_HUMANOIDS))
+		new_upkeep *= MODEUSAGE_HUMANOIDS
+	if(check_flag(MODEFLAG_ANORGANIC))
+		new_upkeep *= MODEUSAGE_ANORGANIC
+	if(check_flag(MODEFLAG_ATMOSPHERIC))
+		new_upkeep *= MODEUSAGE_ATMOSPHERIC
+	if(check_flag(MODEFLAG_HULL))
+		new_upkeep *= MODEUSAGE_HULL
+	if(check_flag(MODEFLAG_BYPASS))
+		new_upkeep *= MODEUSAGE_BYPASS
+	if(check_flag(MODEFLAG_OVERCHARGE))
+		new_upkeep *= MODEUSAGE_OVERCHARGE
+	if(check_flag(MODEFLAG_MODULATE))
+		new_upkeep *= MODEUSAGE_MODULATE
+	upkeep_multiplier = new_upkeep
+
+
 /obj/machinery/power/shield_generator/process()
 	// We're turned off.
 	if(!running)
 		return
 
-	upkeep_power_usage = (field_segments.len - damaged_segments.len) * ENERGY_UPKEEP_PER_TILE
+	upkeep_power_usage = (field_segments.len - damaged_segments.len) * ENERGY_UPKEEP_PER_TILE * upkeep_multiplier
 
 	if(powernet && (running == SHIELD_RUNNING))
 		var/energy_buffer = 0
@@ -106,27 +133,32 @@
 
 
 /obj/machinery/power/shield_generator/proc/field_integrity()
-	if(current_energy)
-		return current_energy / max_energy
+	if(max_energy)
+		return (current_energy / max_energy) * 100
 	return 0
 
 // Takes specific amount of damage
 /obj/machinery/power/shield_generator/proc/take_damage(var/damage, var/shield_damtype)
 	var/energy_to_use = damage * ENERGY_PER_HP
-	mitigation_em -= MITIGATION_HIT_LOSS
-	mitigation_burn -= MITIGATION_HIT_LOSS
-	mitigation_physical -= MITIGATION_HIT_LOSS
+	if(check_flag(MODEFLAG_MODULATE))
+		mitigation_em -= MITIGATION_HIT_LOSS
+		mitigation_burn -= MITIGATION_HIT_LOSS
+		mitigation_physical -= MITIGATION_HIT_LOSS
 
-	switch(shield_damtype)
-		if(SHIELD_DAMTYPE_PHYSICAL)
-			mitigation_physical += MITIGATION_HIT_LOSS + MITIGATION_HIT_GAIN
-			energy_to_use *= 1 - (mitigation_physical / 100)
-		if(SHIELD_DAMTYPE_EM)
-			mitigation_em += MITIGATION_HIT_LOSS + MITIGATION_HIT_GAIN
-			energy_to_use *= 1 - (mitigation_em / 100)
-		if(SHIELD_DAMTYPE_HEAT)
-			mitigation_heat += MITIGATION_HIT_LOSS + MITIGATION_HIT_GAIN
-			energy_to_use *= 1 - (mitigation_heat / 100)
+		switch(shield_damtype)
+			if(SHIELD_DAMTYPE_PHYSICAL)
+				mitigation_physical += MITIGATION_HIT_LOSS + MITIGATION_HIT_GAIN
+				energy_to_use *= 1 - (mitigation_physical / 100)
+			if(SHIELD_DAMTYPE_EM)
+				mitigation_em += MITIGATION_HIT_LOSS + MITIGATION_HIT_GAIN
+				energy_to_use *= 1 - (mitigation_em / 100)
+			if(SHIELD_DAMTYPE_HEAT)
+				mitigation_heat += MITIGATION_HIT_LOSS + MITIGATION_HIT_GAIN
+				energy_to_use *= 1 - (mitigation_heat / 100)
+
+		mitigation_em = between(0, mitigation_em, mitigation_max)
+		mitigation_burn = between(0, mitigation_burn, mitigation_max)
+		mitigation_physical = between(0, mitigation_physical, mitigation_max)
 
 	current_energy -= energy_to_use
 
@@ -149,8 +181,13 @@
 /obj/machinery/power/shield_generator/proc/check_flag(var/flag)
 	return (shield_modes & flag)
 
+// Toggles a specified flag. Performs necessary updates.
 /obj/machinery/power/shield_generator/proc/toggle_flag(var/flag)
 	shield_modes ^= flag
+	update_upkeep_multiplier()
+	for(var/obj/effect/shield/S in field_segments)
+		S.flags_updated()
+
 
 // Gets NanoUI format of existing flags, with user-friendly descriptions and names, as well as current status.
 /obj/machinery/power/shield_generator/proc/get_flag_descriptions()
@@ -226,6 +263,14 @@
 		"status" = check_flag(MODEFLAG_OVERCHARGE),
 		"hacked" = 1
 		"multiplier" = MODEUSAGE_OVERCHARGE
+		)))
+	all_flags.Add(list(list(
+		"name" = "Adaptive Field Harmonics",
+		"desc" = "This mode modulates the shield harmonic frequencies, allowing the field to adapt to various damage types..",
+		"flag" = MODEFLAG_MODULATE,
+		"status" = check_flag(MODEFLAG_MODULATE),
+		"hacked" = 0
+		"multiplier" = MODEUSAGE_MODULATE
 		)))
 
 // These two procs determine tiles that should be shielded given the field range.

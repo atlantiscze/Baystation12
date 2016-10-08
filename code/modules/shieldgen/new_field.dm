@@ -116,14 +116,3 @@
 		invisibility = 0
 		density = 1
 		update_nearby_tiles()
-
-/obj/effect/energy_shield/Bumped(atom/hit)
-	if(istype(hit, /obj/effect/meteor))
-		var/obj/effect/meteor/M = hit
-		var/damage = M.get_shield_damage()
-		take_damage(damage, damage >= 50 ? 1 : 0)
-		visible_message("<span class='danger'>\The [M] breaks into dust as it hits \the [src]!</span>")
-		qdel(M)
-		return
-	return ..()
-
