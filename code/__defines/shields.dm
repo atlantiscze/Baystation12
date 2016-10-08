@@ -51,3 +51,5 @@
 #define SHIELD_OFF 0				// The shield is offline
 #define SHIELD_DISCHARGING 1		// The shield is shutting down and discharging.
 #define SHIELD_RUNNING 2			// The shield is running
+
+#define SHIELD_SHUTDOWN_DISPERSION_RATE (200 KILOWATTS)		// The rate at which shield energy disperses when shutdown is initiated.

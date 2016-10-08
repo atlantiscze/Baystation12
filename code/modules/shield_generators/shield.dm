@@ -2,7 +2,7 @@
 	name = "energy shield"
 	desc = "Impenetrable field of energy, capable of blocking anything as long as it's active."
 	icon = 'icons/obj/machines/shielding.dmi'
-	icon_state = "shieldsparkles"
+	icon_state = "shield_normal"
 	anchored = 1
 	layer = 4.1		//just above mobs
 	density = 1
@@ -12,14 +12,23 @@
 	var/diffused_for = 0
 	var/datum/effect/effect/system/spark_spread/s
 
-// Prevents shuttles, singularities and similar things from moving the field segments away.
+
+/obj/effect/shield/update_icon()
+	if(gen && gen.check_flag(MODEFLAG_OVERCHARGE))
+		icon_state = "shield_overcharged"
+	else
+		icon_state = "shield_normal"
+
+// Prevents shuttles, singularities and pretty much everything else from moving the field segments away.
 /obj/effect/shield/Move()
 	return 0
+
 
 /obj/effect/shield/New()
 	..()
 	update_nearby_tiles()
 	s = new /datum/effect/effect/system/spark_spread(src)
+
 
 /obj/effect/shield/Destroy()
 	..()
@@ -29,6 +38,7 @@
 		gen.damaged_segments -= src
 	gen = null
 	update_nearby_tiles()
+
 
 // Temporarily collapses this shield segment.
 /obj/effect/shield/proc/fail(var/duration)
@@ -42,6 +52,7 @@
 	density = 0
 	invisibility = 101
 	update_nearby_tiles()
+
 
 // Regenerates this shield segment.
 /obj/effect/shield/proc/regenerate()
@@ -60,8 +71,8 @@
 
 /obj/effect/shield/proc/diffuse(var/duration)
 	// The shield is trying to counter diffusers. Cause lasting stress on the shield.
-	if(gen.check_mode(MODEFLAG_BYPASS) && !diffused_for && !disabled_for)
-		take_damage(damage * rand(8, 12), SHIELD_DAMTYPE_EM)
+	if(gen.check_flag(MODEFLAG_BYPASS) && !diffused_for && !disabled_for)
+		take_damage(duration * rand(8, 12), SHIELD_DAMTYPE_EM)
 		return
 
 	if(!diffused_for && !disabled_for)
@@ -124,6 +135,7 @@
 				S.fail(1)
 			return
 
+
 // As we have various shield modes, this handles whether specific things can pass or not.
 /obj/effect/shield/CanPass(var/atom/movable/mover, var/turf/target, var/height=0, var/air_group=0)
 	// Somehow we don't have a generator. This shouldn't happen. Delete the shield.
@@ -142,7 +154,7 @@
 	if(istype(mover, /mob/living/carbon/human))
 		var/mob/living/carbon/human/H = mover
 		// IPCs, FBPs
-		if(H.IsSynthetic())
+		if(H.isSynthetic())
 			return !gen.check_flag(MODEFLAG_ANORGANIC)
 		return !gen.check_flag(MODEFLAG_HUMANOIDS)
 
@@ -208,7 +220,7 @@
 	user.setClickCooldown(DEFAULT_ATTACK_COOLDOWN)
 	user.do_attack_animation(src)
 
-	if(gen.check_flag(MODEFLAG_HYPERKINETIC)
+	if(gen.check_flag(MODEFLAG_HYPERKINETIC))
 		user.visible_message("<span class='danger'>\The [user] hits \the [src] with \the [I]!</span>")
 		if(I.damtype == BURN)
 			take_damage(I.force, SHIELD_DAMTYPE_HEAT)
@@ -224,7 +236,7 @@
 /obj/effect/shield/Bumped(var/atom/movable/mover)
 	if(istype(mover, /obj/effect/meteor))
 		// We don't block meteors. Let it pass as if we weren't here.
-		if(!gen.check_flag(MODEFLAG_HYPERKINETIC)
+		if(!gen.check_flag(MODEFLAG_HYPERKINETIC))
 			return ..()
 		var/obj/effect/meteor/M = mover
 		take_damage(M.get_shield_damage(), SHIELD_DAMTYPE_PHYSICAL, M)
@@ -237,6 +249,7 @@
 // Called when a flag is toggled. Can be used to add on-toggle behavior, such as visual changes.
 /obj/effect/shield/proc/flags_updated()
 	if(!gen)
+		qdel(src)
 		return
 
 	// Update airflow
