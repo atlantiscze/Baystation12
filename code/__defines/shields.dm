@@ -2,8 +2,8 @@
 #define SHIELD_DAMTYPE_EM 2			// Electromagnetic damage - Ion weaponry, stun beams, ...
 #define SHIELD_DAMTYPE_HEAT 3		// Heat damage - Lasers, fire
 
-#define ENERGY_PER_HP (5 KILOWATTS)	// Base amount energy that will be deducted from the generator's internal reserve per 1 HP of damage taken
-#define ENERGY_UPKEEP_PER_TILE 250	// Base upkeep per tile protected. Multiplied by various enabled shield modes. Without them the field does literally nothing.
+#define ENERGY_PER_HP (50 KILOWATTS)// Base amount energy that will be deducted from the generator's internal reserve per 1 HP of damage taken
+#define ENERGY_UPKEEP_PER_TILE 100	// Base upkeep per tile protected. Multiplied by various enabled shield modes. Without them the field does literally nothing.
 
 // This shield model is slightly inspired by Sins of a Solar Empire series. In short, shields are designed to analyze what hits them, and adapt themselves against that type of damage.
 // This means shields will become increasingly effective against things like emitters - as they will adapt to heat damage, however they will be vulnerable to brute and EM damage.
@@ -30,12 +30,12 @@
 #define MODEUSAGE_MODULATE 2				// Modulates the shield, enabling the mitigation system.
 
 // Relevant mode bitflags (maximal of 16 flags due to current BYOND limitations)
-#define MODEFLAG_HYPERKINETIC 1		// Done
-#define MODEFLAG_PHOTONIC 2			// Done
-#define MODEFLAG_NONHUMANS 4		// Done
-#define MODEFLAG_HUMANOIDS 8		// Done
-#define MODEFLAG_ANORGANIC 16		// Done
-#define MODEFLAG_ATMOSPHERIC 32		// Done
+#define MODEFLAG_HYPERKINETIC 1
+#define MODEFLAG_PHOTONIC 2
+#define MODEFLAG_NONHUMANS 4
+#define MODEFLAG_HUMANOIDS 8
+#define MODEFLAG_ANORGANIC 16
+#define MODEFLAG_ATMOSPHERIC 32
 #define MODEFLAG_HULL 64
 #define MODEFLAG_BYPASS 128
 #define MODEFLAG_OVERCHARGE 256
@@ -52,4 +52,4 @@
 #define SHIELD_DISCHARGING 1		// The shield is shutting down and discharging.
 #define SHIELD_RUNNING 2			// The shield is running
 
-#define SHIELD_SHUTDOWN_DISPERSION_RATE (200 KILOWATTS)		// The rate at which shield energy disperses when shutdown is initiated.
+#define SHIELD_SHUTDOWN_DISPERSION_RATE (500 KILOWATTS)		// The rate at which shield energy disperses when shutdown is initiated.

@@ -70,9 +70,6 @@
 	..()
 	verbs -= /mob/verb/observe
 
-/mob/living/simple_animal/updatehealth()
-	return
-
 /mob/living/simple_animal/Life()
 	..()
 
@@ -332,7 +329,20 @@
 	adjustBruteLoss(damage * blocked_mult(getarmor(null, "bomb")))
 
 /mob/living/simple_animal/adjustBruteLoss(damage)
-	health = Clamp(health - damage, 0, maxHealth)
+	..()
+	updatehealth()
+
+/mob/living/simple_animal/adjustFireLoss(damage)
+	..()
+	updatehealth()
+
+/mob/living/simple_animal/adjustToxLoss(damage)
+	..()
+	updatehealth()
+
+/mob/living/simple_anima/adjustOxyLoss(damage)
+	..()
+	updatehealth()
 
 /mob/living/simple_animal/proc/SA_attackable(target_mob)
 	if (isliving(target_mob))

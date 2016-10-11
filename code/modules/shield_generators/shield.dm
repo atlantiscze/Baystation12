@@ -1,10 +1,24 @@
+/obj/effect/shield_impact
+	name = "shield impact"
+	icon = 'icons/obj/machines/shielding.dmi'
+	icon_state = "shield_impact"
+	anchored = 1
+	layer = 4.2		// Above shields
+	density = 0
+
+
+/obj/effect/shield_impact/New()
+	spawn(2 SECONDS)
+		qdel(src)
+
+
 /obj/effect/shield
 	name = "energy shield"
 	desc = "Impenetrable field of energy, capable of blocking anything as long as it's active."
 	icon = 'icons/obj/machines/shielding.dmi'
 	icon_state = "shield_normal"
 	anchored = 1
-	layer = 4.1		//just above mobs
+	layer = 4.1		// Above mobs
 	density = 1
 	invisibility = 0
 	var/obj/machinery/power/shield_generator/gen = null
@@ -14,13 +28,21 @@
 
 
 /obj/effect/shield/update_icon()
+	if(gen && gen.check_flag(MODEFLAG_PHOTONIC) && !disabled_for && !diffused_for)
+		set_opacity(1)
+	else
+		set_opacity(0)
+
 	if(gen && gen.check_flag(MODEFLAG_OVERCHARGE))
 		icon_state = "shield_overcharged"
 	else
 		icon_state = "shield_normal"
 
 // Prevents shuttles, singularities and pretty much everything else from moving the field segments away.
-/obj/effect/shield/Move()
+// The only thing that is allowed to move us is the Destroy() proc.
+/obj/effect/shield/forceMove(var/newloc, var/qdeled = 0)
+	if(qdeled)
+		return ..()
 	return 0
 
 
@@ -38,11 +60,12 @@
 		gen.damaged_segments -= src
 	gen = null
 	update_nearby_tiles()
+	forceMove(null, 1)
 
 
 // Temporarily collapses this shield segment.
 /obj/effect/shield/proc/fail(var/duration)
-	if(!duration <= 0)
+	if(duration <= 0)
 		return
 	if(!disabled_for)
 		s.set_up(1, 1, src)
@@ -52,6 +75,7 @@
 	density = 0
 	invisibility = 101
 	update_nearby_tiles()
+	update_icon()
 
 
 // Regenerates this shield segment.
@@ -66,6 +90,7 @@
 		density = 1
 		invisibility = 0
 		update_nearby_tiles()
+		update_icon()
 		gen.damaged_segments -= src
 
 
@@ -84,30 +109,34 @@
 	density = 0
 	invisibility = 101
 	update_nearby_tiles()
-
-
+	update_icon()
 
 /obj/effect/shield/attack_generic(var/source, var/damage, var/emote)
 	take_damage(damage, SHIELD_DAMTYPE_PHYSICAL)
+	if(gen.check_flag(MODEFLAG_OVERCHARGE) && istype(source, /mob/living/))
+		overcharge_shock(source)
 	..(source, damage, emote)
 
 
 // Fails shield segments in specific range. Range of 1 affects the shielded turf only.
 /obj/effect/shield/proc/fail_adjacent_segments(var/range, var/hitby = null)
+	world << "DBG: Failing Adjacent [x] [y] [z] - Range [range]"
 	if(hitby)
 		visible_message("<span class='danger'>\The [src] flashes a bit as \the [hitby] collides with it, eventually fading out in a rain of sparks!</span>")
 	else
 		visible_message("<span class='danger'>\The [src] flashes a bit as it eventually fades out in a rain of sparks!</span>")
 	fail(range * 2)
+
 	for(var/obj/effect/shield/S in range(range, src))
 		// Don't affect shields owned by other shield generators
 		if(S.gen != src.gen)
 			continue
 		// The closer we are to impact site, the longer it takes for shield to come back up.
 		S.fail(-(-range + get_dist(src, S)) * 2)
-
+		world << "DBG: S.fail() [S.x] [S.y] [S.z] - Severity [-(-range + get_dist(src, S)) * 2]"
 
 /obj/effect/shield/proc/take_damage(var/damage, var/damtype, var/hitby)
+	world << "DBG: take_damage([damage], [damtype], [hitby]"
 	if(!gen)
 		qdel(src)
 		return
@@ -116,6 +145,8 @@
 		return
 
 	damage = round(damage)
+
+	new/obj/effect/shield_impact(get_turf(src))
 
 	switch(gen.take_damage(damage, damtype))
 		if(SHIELD_ABSORBED)
@@ -143,7 +174,7 @@
 		qdel(src)
 		return 1
 
-	if(disabled_for)
+	if(disabled_for || diffused_for)
 		return 1
 
 	// Atmosphere containment.
@@ -234,17 +265,32 @@
 
 // Special treatment for meteors because they would otherwise penetrate right through the shield.
 /obj/effect/shield/Bumped(var/atom/movable/mover)
+	if(!gen)
+		qdel(src)
+		return 0
 	if(istype(mover, /obj/effect/meteor))
 		// We don't block meteors. Let it pass as if we weren't here.
 		if(!gen.check_flag(MODEFLAG_HYPERKINETIC))
 			return ..()
 		var/obj/effect/meteor/M = mover
 		take_damage(M.get_shield_damage(), SHIELD_DAMTYPE_PHYSICAL, M)
-		visible_message("<span class='danger'>\The [M] breaks into dust!</span>")
+		visible_message("<span class='danger'>\The [M] breaks nto dust!</span>")
+		M.make_debris()
 		qdel(M)
+		return 0
+	if(istype(mover, /mob/living/))
+		if(!gen.check_flag(MODEFLAG_OVERCHARGE))
+			return
+		overcharge_shock(mover)
 		return 0
 	return ..()
 
+
+/obj/effect/shield/proc/overcharge_shock(var/mob/living/M)
+	M.adjustFireLoss(rand(20, 40))
+	M.Weaken(5)
+	M << "As you come into contact with \the [src] a surge of energy paralyses you!"
+	take_damage(10, SHIELD_DAMTYPE_EM)
 
 // Called when a flag is toggled. Can be used to add on-toggle behavior, such as visual changes.
 /obj/effect/shield/proc/flags_updated()
@@ -255,8 +301,3 @@
 	// Update airflow
 	update_nearby_tiles()
 	update_icon()
-
-	// Photonic flag blocks vision
-	opacity = 0
-	if(gen.check_flag(MODEFLAG_PHOTONIC))
-		opacity = 1

@@ -24,6 +24,13 @@
 	var/offline_for = 0					// The generator will be inoperable for this duration in ticks.
 
 
+/obj/machinery/power/shield_generator/update_icon()
+	if(running)
+		icon_state = "generator1"
+	else
+		icon_state = "generator0"
+
+
 /obj/machinery/power/shield_generator/New()
 	..()
 	component_parts = list()
@@ -34,6 +41,7 @@
 	component_parts += new /obj/item/weapon/stock_parts/console_screen(src)
 	RefreshParts()
 	connect_to_network()
+
 
 /obj/machinery/power/shield_generator/Destroy()
 	shutdown_field()
@@ -66,6 +74,7 @@
 	mitigation_em = 0
 	mitigation_physical = 0
 	mitigation_heat = 0
+	update_icon()
 
 
 // Generates the field objects. Deletes existing field, if applicable.
@@ -73,6 +82,10 @@
 	if(field_segments.len)
 		for(var/obj/effect/shield/S in field_segments)
 			qdel(S)
+
+	// The generator is not turned on, so don't generate any new tiles.
+	if(!running)
+		return
 
 	var/list/shielded_turfs
 
@@ -86,6 +99,7 @@
 		S.gen = src
 		S.flags_updated()
 		field_segments |= S
+	update_icon()
 
 
 // Recalculates and updates the upkeep multiplier
@@ -123,14 +137,19 @@
 	// We're turned off.
 	if(!running)
 		return
+	// We are shutting down, therefore our stored energy disperses faster than usual.
 	else if(running == SHIELD_DISCHARGING)
 		current_energy -= SHIELD_SHUTDOWN_DISPERSION_RATE
+
+	mitigation_em = between(0, mitigation_em - MITIGATION_LOSS_PASSIVE, mitigation_max)
+	mitigation_heat = between(0, mitigation_heat - MITIGATION_LOSS_PASSIVE, mitigation_max)
+	mitigation_physical = between(0, mitigation_physical - MITIGATION_LOSS_PASSIVE, mitigation_max)
 
 	upkeep_power_usage = round((field_segments.len - damaged_segments.len) * ENERGY_UPKEEP_PER_TILE * upkeep_multiplier)
 
 	if(powernet && (running == SHIELD_RUNNING))
 		var/energy_buffer = 0
-		energy_buffer = draw_power(upkeep_power_usage)
+		energy_buffer = draw_power(min(upkeep_power_usage, input_cap))
 		power_usage += round(energy_buffer)
 
 		if(energy_buffer < upkeep_power_usage)
@@ -139,7 +158,7 @@
 		// Now try to recharge our internal energy.
 		var/energy_to_demand
 		if(input_cap)
-			energy_to_demand = between(0, max_energy - current_energy, input_cap)
+			energy_to_demand = between(0, max_energy - current_energy, input_cap - upkeep_power_usage)
 		else
 			energy_to_demand = max(0, max_energy - current_energy)
 		energy_buffer = draw_power(energy_to_demand)
@@ -189,26 +208,27 @@
 	var/data[0]
 
 	data["running"] = running
-	data["modes"] = list(get_flag_descriptions())
+	data["modes"] = get_flag_descriptions()
 	data["overloaded"] = overloaded
 	data["mitigation_max"] = mitigation_max
-	data["mitigation_physical"] = (mitigation_physical, 0.1)
-	data["mitigation_em"] = (mitigation_em, 0.1)
+	data["mitigation_physical"] = round(mitigation_physical, 0.1)
+	data["mitigation_em"] = round(mitigation_em, 0.1)
 	data["mitigation_heat"] = round(mitigation_heat, 0.1)
 	data["field_integrity"] = field_integrity()
 	data["max_energy"] = round(max_energy / 1000000, 0.1)
 	data["current_energy"] = round(current_energy / 1000000, 0.1)
 	data["total_segments"] = field_segments ? field_segments.len : 0
-	data["damaged_segments"] = damaged_segments ? damaged_segments.len : 0
+	data["functional_segments"] = damaged_segments ? data["total_segments"] - damaged_segments.len : data["total_segments"]
+	data["field_radius"] = field_radius
 	data["input_cap_kw"] = round(input_cap / 1000)
 	data["upkeep_power_usage"] = round(upkeep_power_usage / 1000, 0.1)
-	data["power_usage"] = round(power_usage)
+	data["power_usage"] = round(power_usage / 1000)
 	data["hacked"] = hacked
 	data["offline_for"] = offline_for * 2
 
 	ui = nanomanager.try_update_ui(user, src, ui_key, ui, data, force_open)
 	if (!ui)
-		ui = new(user, src, ui_key, "shieldgen.tmpl", src.name, 500, 400)
+		ui = new(user, src, ui_key, "shieldgen.tmpl", src.name, 500, 800)
 		ui.set_initial_data(data)
 		ui.open()
 		ui.set_auto_update(1)
@@ -229,7 +249,6 @@
 
 	if(href_list["start_generator"])
 		if(offline_for)
-			usr << "\The [src] refuses to start up."
 			return
 		running = SHIELD_RUNNING
 		regenerate_field()
@@ -240,20 +259,23 @@
 		if(!new_range)
 			return
 		field_radius = between(1, new_range, world.maxx)
+		regenerate_field()
 		. = 1
 
 	if(href_list["set_input_cap"])
-		var/new_cap = round(input(usr, "Enter new input cap (in kW). Enter 0 to disable input cap.", "Generator Power Control", round(input_cap / 1000)) as num)
+		var/new_cap = round(input(usr, "Enter new input cap (in kW). Enter 0 or nothing to disable input cap.", "Generator Power Control", round(input_cap / 1000)) as num)
 		if(!new_cap)
+			input_cap = 0
 			return
 		input_cap = max(0, new_cap) * 1000
 		. = 1
 
 	if(href_list["toggle_mode"])
 		// Toggling hacked-only modes requires the hacked var to be set to 1
-		if((href_list["toggle_mode"] & (MODEFLAG_BYPASS | MODEFLAG_OVERCHARGE)) && !hacked)
+		if((text2num(href_list["toggle_mode"]) & (MODEFLAG_BYPASS | MODEFLAG_OVERCHARGE)) && !hacked)
 			return
-		toggle_flag(href_list["toggle_mode"])
+
+		toggle_flag(text2num(href_list["toggle_mode"]))
 		. = 1
 
 	// Instantly drops the shield, but causes a cooldown before it may be started again. Also carries a risk of EMP at high charge.
@@ -261,11 +283,12 @@
 		if(!running)
 			return
 		var/temp_integrity = field_integrity()
-		offline_for = current_energy / (100 KILOWATTS)
+		// If the shield would take 5 minutes to disperse and shut down using regular methods, it will take x2 (10 minutes) of this time to cool down after emergency shutdown
+		offline_for = round(current_energy / (SHIELD_SHUTDOWN_DISPERSION_RATE / 2))
 		shutdown_field()
 		if(prob(temp_integrity - 50))
 			spawn()
-				empulse(4,8)
+				empulse(src, 4, 8)
 		. = 1
 
 	if(.)
@@ -327,7 +350,7 @@
 	for(var/obj/effect/shield/S in field_segments)
 		S.flags_updated()
 
-	if(flag & MODEFLAG_HULL)
+	if((flag & MODEFLAG_HULL) && running)
 		regenerate_field()
 
 	if(flag & MODEFLAG_MODULATE)
@@ -397,7 +420,7 @@
 		)))
 	all_flags.Add(list(list(
 		"name" = "Diffuser Bypass",
-		"desc" = "This mode disables the built-in safeties which allows the generator to counter effect of various shield diffusers. This tends to create a very large strain on the generator.",
+		"desc" = "This mode disables the built-in safeties which allows the generator to counter effect of various shield diffusers. This tends to create a very large strain on the generator. Does not work with enabled safety protocols.",
 		"flag" = MODEFLAG_BYPASS,
 		"status" = check_flag(MODEFLAG_BYPASS),
 		"hacked" = 1,
@@ -405,7 +428,7 @@
 		)))
 	all_flags.Add(list(list(
 		"name" = "Field Overcharge",
-		"desc" = "This mode polarises the field, causing damage on contact.",
+		"desc" = "This mode polarises the field, causing damage on contact. Does not work with enabled safety protocols.",
 		"flag" = MODEFLAG_OVERCHARGE,
 		"status" = check_flag(MODEFLAG_OVERCHARGE),
 		"hacked" = 1,
@@ -419,6 +442,7 @@
 		"hacked" = 0,
 		"multiplier" = MODEUSAGE_MODULATE
 		)))
+	return all_flags
 
 
 // These two procs determine tiles that should be shielded given the field range.
@@ -448,23 +472,24 @@
 
 
 /obj/machinery/power/shield_generator/proc/fieldtype_hull()
+	set background = 1
 	var/list/out = list()
 	var/turf/T
 	var/turf/gen_turf = get_turf(src)
-	var/list/valid_neighbors = list(
-	/turf/simulated/wall,
-	/turf/simulated/floor
-	)
+
 	if (!gen_turf)
 		return
-
 	for (var/x_offset = -field_radius; x_offset <= field_radius; x_offset++)
 		for (var/y_offset = -field_radius; y_offset <= field_radius; y_offset++)
 			T = locate(gen_turf.x + x_offset, gen_turf.y + y_offset, gen_turf.z)
-			if(!istype(T, /turf/space))
+
+			// Don't expand to space or on shuttle areas.
+			if(istype(T, /turf/space) || istype(get_area(T), /area/space) || istype(get_area(T), /area/shuttle/))
 				continue
 
+			// Find adjacent space/shuttle tiles and cover them. Shuttles won't be blocked if shield diffuser is mapped in and turned on.
 			for(var/turf/TN in orange(1, T))
-				if(TN.type in valid_neighbors)
-					out += TN
+				if(istype(TN, /turf/space) || istype(get_area(TN), /area/shuttle/))
+					out |= TN
 					continue
+	return out

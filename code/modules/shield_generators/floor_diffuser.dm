@@ -10,9 +10,16 @@
 	anchored = 1
 	density = 0
 	level = 1
+	var/alarm = 0
 	var/enabled = 1
 
 /obj/machinery/shield_diffuser/process()
+	if(alarm)
+		alarm--
+		if(!alarm)
+			update_icon()
+		return
+
 	if(!enabled)
 		return
 	for(var/direction in cardinal)
@@ -30,13 +37,33 @@
 		return
 
 /obj/machinery/shield_diffuser/update_icon()
+	if(alarm)
+		icon_state = "fdiffuser_emergency"
+		return
 	if((stat & (NOPOWER | BROKEN)) || !enabled)
 		icon_state = "fdiffuser_off"
 	else
 		icon_state = "fdiffuser_on"
 
 /obj/machinery/shield_diffuser/attack_hand()
+	if(alarm)
+		usr << "You press an override button on \the [src], re-enabling it."
+		alarm = 0
+		update_icon()
+		return
 	enabled = !enabled
 	use_power = enabled + 1
 	update_icon()
 	usr << "You turn \the [src] [enabled ? "on" : "off"]"
+
+/obj/machinery/shield_diffuser/proc/meteor_alarm(var/duration)
+	if(!duration)
+		return
+	alarm = round(max(alarm, duration))
+	update_icon()
+
+/obj/machinery/shield_diffuser/examine(var/mob/user)
+	..()
+	user << "It is [enabled ? "enabled" : "disabled"]"
+	if(alarm)
+		user << "A red LED labeled \"Proximity Alarm\" is blinking on the control panel."

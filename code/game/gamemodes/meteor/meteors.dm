@@ -98,12 +98,11 @@
 	pass_flags = PASSTABLE
 	var/heavy = 0
 	var/z_original = 1
-
 	var/meteordrop = /obj/item/weapon/ore/iron
 	var/dropamt = 2
 
 /obj/effect/meteor/proc/get_shield_damage()
-	return hits * hitpwr * (heavy ? 2 : 1) * rand(2, 4)
+	return max(((max(hits, 2)) * (heavy + 1) * rand(30, 60)) / hitpwr , 0)
 
 /obj/effect/meteor/Move()
 	if(z != z_original || loc == dest)
@@ -130,7 +129,8 @@
 	SpinAnimation()
 
 /obj/effect/meteor/Bump(atom/A)
-	if(A)
+	..()
+	if(A && !gcDestroyed)	// Prevents explosions and other effects when we were deleted by whatever we Bumped() - currently used by shields.
 		ram_turf(get_turf(A))
 		get_hit()
 
@@ -246,17 +246,13 @@
 /obj/effect/meteor/tunguska
 	name = "tunguska meteor"
 	icon_state = "flaming"
-	desc = "Your life briefly passes before your eyes the moment you lay them on this monstruosity."
-	hits = 30
+	desc = "Your life briefly passes before your eyes the moment you lay them on this monstrosity."
+	hits = 10
 	hitpwr = 1
 	heavy = 1
-	meteordrop = /obj/item/weapon/ore/phoron
+	dropamt = 15
+	meteordrop = /obj/item/weapon/ore/diamond	// Probably means why it penetrates the hull so easily before exploding.
 
 /obj/effect/meteor/tunguska/meteor_effect()
 	..(heavy)
-	explosion(src.loc, 5, 10, 15, 20, 0)
-
-/obj/effect/meteor/tunguska/Bump()
-	..()
-	if(prob(20))
-		explosion(src.loc,2,4,6,8)
+	explosion(src.loc, 3, 6, 9, 20, 0)
