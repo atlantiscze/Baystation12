@@ -4,6 +4,7 @@
 	icon = 'icons/obj/machines/shielding.dmi'
 	icon_state = "generator0"
 	density = 1
+	var/datum/wires/shield_generator/wires
 	var/list/field_segments = list()	// List of all shield segments owned by this generator.
 	var/list/damaged_segments = list()	// List of shield segments that have failed and are currently regenerating.
 	var/shield_modes = 0				// Enabled shield mode flags
@@ -22,7 +23,9 @@
 	var/overloaded = 0					// Whether the field has overloaded and shut down to regenerate.
 	var/hacked = 0						// Whether the generator has been hacked by cutting the safety wire.
 	var/offline_for = 0					// The generator will be inoperable for this duration in ticks.
-
+	var/input_cut = 0					// Whether the input wire is cut.
+	var/mode_changes_locked = 0			// Whether the control wire is cut, locking out changes.
+	var/ai_control_disabled = 0			// Whether the AI control is disabled.
 
 /obj/machinery/power/shield_generator/update_icon()
 	if(running)
@@ -41,12 +44,14 @@
 	component_parts += new /obj/item/weapon/stock_parts/console_screen(src)
 	RefreshParts()
 	connect_to_network()
+	wires = new(src)
 
 
 /obj/machinery/power/shield_generator/Destroy()
 	shutdown_field()
 	field_segments = null
 	damaged_segments = null
+	qdel(wires)
 	..()
 
 
@@ -147,7 +152,7 @@
 
 	upkeep_power_usage = round((field_segments.len - damaged_segments.len) * ENERGY_UPKEEP_PER_TILE * upkeep_multiplier)
 
-	if(powernet && (running == SHIELD_RUNNING))
+	if(powernet && (running == SHIELD_RUNNING) && !input_cut)
 		var/energy_buffer = 0
 		energy_buffer = draw_power(min(upkeep_power_usage, input_cap))
 		power_usage += round(energy_buffer)
@@ -178,16 +183,21 @@
 
 
 /obj/machinery/power/shield_generator/attackby(obj/item/O as obj, mob/user as mob)
-	if(running)
-		user << "Turn off \the [src] first!"
-		return
-	// Prevents dismantle-repair tactics to reset the emergency shutdown timer.
-	if(offline_for)
-		user << "Wait until \the [src] cools down from emergency shutdown first!"
+	if(panel_open && (istype(O, /obj/item/device/multitool) || istype(O, /obj/item/weapon/wirecutters)))
+		attack_hand(user)
 		return
 
 	if(default_deconstruction_screwdriver(user, O))
 		return
+
+	// Prevents dismantle-rebuild tactics to reset the emergency shutdown timer.
+	if(running)
+		user << "Turn off \the [src] first!"
+		return
+	if(offline_for)
+		user << "Wait until \the [src] cools down from emergency shutdown first!"
+		return
+
 	if(default_deconstruction_crowbar(user, O))
 		return
 	if(default_part_replacement(user, O))
@@ -236,11 +246,18 @@
 
 /obj/machinery/power/shield_generator/attack_hand(var/mob/user)
 	ui_interact(user)
+	if(panel_open)
+		wires.Interact(user)
 
 
 /obj/machinery/power/shield_generator/Topic(href, href_list)
+	var/mob/user = usr
 	if(..())
 		return 1
+
+	if(issilicon(user) && !Adjacent(user) && ai_control_disabled)
+		return
+
 	if(href_list["begin_shutdown"])
 		if(running != SHIELD_RUNNING)
 			return
@@ -253,6 +270,24 @@
 		running = SHIELD_RUNNING
 		regenerate_field()
 		. = 1
+
+	// Instantly drops the shield, but causes a cooldown before it may be started again. Also carries a risk of EMP at high charge.
+	if(href_list["emergency_shutdown"])
+		if(!running)
+			return
+		var/temp_integrity = field_integrity()
+		// If the shield would take 5 minutes to disperse and shut down using regular methods, it will take x2 (10 minutes) of this time to cool down after emergency shutdown
+		offline_for = round(current_energy / (SHIELD_SHUTDOWN_DISPERSION_RATE / 2))
+		shutdown_field()
+		if(prob(temp_integrity - 50))
+			spawn()
+				empulse(src, 4, 8)
+		. = 1
+
+	if(mode_changes_locked)
+		if(.)
+			nanomanager.update_uis(src)
+		return
 
 	if(href_list["set_range"])
 		var/new_range = input(usr, "Enter new field range (1-[world.maxx]). Leave blank to cancel.", "Field Radius Control", field_radius) as num
@@ -276,19 +311,6 @@
 			return
 
 		toggle_flag(text2num(href_list["toggle_mode"]))
-		. = 1
-
-	// Instantly drops the shield, but causes a cooldown before it may be started again. Also carries a risk of EMP at high charge.
-	if(href_list["emergency_shutdown"])
-		if(!running)
-			return
-		var/temp_integrity = field_integrity()
-		// If the shield would take 5 minutes to disperse and shut down using regular methods, it will take x2 (10 minutes) of this time to cool down after emergency shutdown
-		offline_for = round(current_energy / (SHIELD_SHUTDOWN_DISPERSION_RATE / 2))
-		shutdown_field()
-		if(prob(temp_integrity - 50))
-			spawn()
-				empulse(src, 4, 8)
 		. = 1
 
 	if(.)
@@ -419,6 +441,18 @@
 		"multiplier" = MODEUSAGE_HULL
 		)))
 	all_flags.Add(list(list(
+		"name" = "Adaptive Field Harmonics",
+		"desc" = "This mode modulates the shield harmonic frequencies, allowing the field to adapt to various damage types..",
+		"flag" = MODEFLAG_MODULATE,
+		"status" = check_flag(MODEFLAG_MODULATE),
+		"hacked" = 0,
+		"multiplier" = MODEUSAGE_MODULATE
+		)))
+
+	if(!hacked)
+		return all_flags
+	// Hacked modes below. Won't show in the UI if the generator is not hacked.
+	all_flags.Add(list(list(
 		"name" = "Diffuser Bypass",
 		"desc" = "This mode disables the built-in safeties which allows the generator to counter effect of various shield diffusers. This tends to create a very large strain on the generator. Does not work with enabled safety protocols.",
 		"flag" = MODEFLAG_BYPASS,
@@ -433,14 +467,6 @@
 		"status" = check_flag(MODEFLAG_OVERCHARGE),
 		"hacked" = 1,
 		"multiplier" = MODEUSAGE_OVERCHARGE
-		)))
-	all_flags.Add(list(list(
-		"name" = "Adaptive Field Harmonics",
-		"desc" = "This mode modulates the shield harmonic frequencies, allowing the field to adapt to various damage types..",
-		"flag" = MODEFLAG_MODULATE,
-		"status" = check_flag(MODEFLAG_MODULATE),
-		"hacked" = 0,
-		"multiplier" = MODEUSAGE_MODULATE
 		)))
 	return all_flags
 

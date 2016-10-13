@@ -111,11 +111,10 @@
 
 	. = ..() //process movement...
 
-	if(.)//.. if did move, ram the turf we get in
+	if(. && !istype(get_turf(src), /turf/space/))
 		var/turf/T = get_turf(loc)
 		ram_turf(T)
-
-		if(prob(10) && !istype(T, /turf/space))//randomly takes a 'hit' from ramming
+		if(prob(20))
 			get_hit()
 
 	return .

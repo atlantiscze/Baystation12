@@ -120,7 +120,6 @@
 
 // Fails shield segments in specific range. Range of 1 affects the shielded turf only.
 /obj/effect/shield/proc/fail_adjacent_segments(var/range, var/hitby = null)
-	world << "DBG: Failing Adjacent [x] [y] [z] - Range [range]"
 	if(hitby)
 		visible_message("<span class='danger'>\The [src] flashes a bit as \the [hitby] collides with it, eventually fading out in a rain of sparks!</span>")
 	else
@@ -133,10 +132,8 @@
 			continue
 		// The closer we are to impact site, the longer it takes for shield to come back up.
 		S.fail(-(-range + get_dist(src, S)) * 2)
-		world << "DBG: S.fail() [S.x] [S.y] [S.z] - Severity [-(-range + get_dist(src, S)) * 2]"
 
 /obj/effect/shield/proc/take_damage(var/damage, var/damtype, var/hitby)
-	world << "DBG: take_damage([damage], [damtype], [hitby]"
 	if(!gen)
 		qdel(src)
 		return
@@ -289,7 +286,7 @@
 /obj/effect/shield/proc/overcharge_shock(var/mob/living/M)
 	M.adjustFireLoss(rand(20, 40))
 	M.Weaken(5)
-	M << "As you come into contact with \the [src] a surge of energy paralyses you!"
+	M << "<span class='danger'>As you come into contact with \the [src] a surge of energy paralyses you!</span>"
 	take_damage(10, SHIELD_DAMTYPE_EM)
 
 // Called when a flag is toggled. Can be used to add on-toggle behavior, such as visual changes.
