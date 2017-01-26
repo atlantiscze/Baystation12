@@ -16,6 +16,9 @@
 	var/category = /datum/shuttle
 
 	var/ceiling_type = /turf/unsimulated/floor/shuttle_ceiling
+	var/requires_drive = TRUE
+	var/area/locked_destination = null
+	var/area/locked_origin = null
 
 /datum/shuttle/New(_name)
 	..()
@@ -49,13 +52,35 @@
 
 	//it would be cool to play a sound here
 	moving_status = SHUTTLE_WARMUP
-	spawn(warmup_time*10)
-		if (moving_status == SHUTTLE_IDLE)
-			return	//someone cancelled the launch
+	if(requires_drive)
+		var/drives_found = 0
+		// You can technically have two or more drives, but we need only one to charge so it'd actually be waste of power.
+		for(var/obj/machinery/power/bluespace_drive/BD in origin)
+			drives_found++
+			BD.shuttle = src
+			BD.sequence_status = DRIVE_CHARGING
+		// No drive found, so the shuttle can't jump.
+		if(!drives_found)
+			moving_status = SHUTTLE_IDLE
+		locked_destination = destination
+		locked_origin = origin
+	else
+		spawn(warmup_time*10)
+			if (moving_status == SHUTTLE_IDLE)
+				return	//someone cancelled the launch
 
-		moving_status = SHUTTLE_INTRANSIT //shouldn't matter but just to be safe
-		move(origin, destination)
-		moving_status = SHUTTLE_IDLE
+			moving_status = SHUTTLE_INTRANSIT //shouldn't matter but just to be safe
+			move(origin, destination)
+			moving_status = SHUTTLE_IDLE
+
+/datum/shuttle/proc/drive_charged()
+	if(!locked_destination)
+		return
+	if(moving_status == SHUTTLE_IDLE)
+		return
+	moving_status = SHUTTLE_INTRANSIT
+	move(locked_origin, locked_destination)
+	moving_status = SHUTTLE_IDLE
 
 /datum/shuttle/proc/long_jump(var/area/departing, var/area/destination, var/area/interim, var/travel_time, var/direction)
 //	log_debug("shuttle/long_jump: departing=[departing], destination=[destination], interim=[interim], travel_time=[travel_time]")
@@ -169,19 +194,46 @@
 			if(!M.buckled)
 				M.Weaken(3)
 
-	// Power-related checks. If shuttle contains power related machinery, update powernets.
-	var/update_power = 0
-	for(var/obj/machinery/power/P in destination)
-		update_power = 1
-		break
-
+	// Power-related checks. First cut all cables from their current powernet
 	for(var/obj/structure/cable/C in destination)
-		update_power = 1
-		break
+		if(C.powernet)
+			C.powernet.remove_cable(C)
 
-	if(update_power)
-		makepowernets()
-	return
+	// Now propagate new powernet(s)
+	for(var/obj/structure/cable/C in destination)
+		if(C.powernet)
+			continue
+
+		var/datum/powernet/NewPN = new()
+		NewPN.add_cable(C)
+		propagate_network(C,C.powernet)
+
+	// And at last, reconnect machinery.
+	for(var/obj/machinery/power/P in destination)
+		P.connect_to_network()
+
+
+	// Update APCs.
+	var/obj/machinery/power/apc/apc = origin.apc
+	if(istype(apc))
+		origin.apc = null
+		origin.power_light = 0
+		origin.power_equip = 0
+		origin.power_environ = 0
+		origin.power_change()
+		destination.apc = apc
+		apc.area = destination
+		apc.name = "\improper [destination.name] APC"
+		apc.update()
+		destination.power_change()
+
+	// And air alarms
+	for(var/obj/machinery/alarm/A in destination)
+		if(A == origin.master_air_alarm)
+			origin.master_air_alarm = null
+			destination.master_air_alarm = A
+		A.alarm_area = destination
+		A.name = "[destination.name] Air Alarm"
 
 //returns 1 if the shuttle has a valid arrive time
 /datum/shuttle/proc/has_arrive_time()

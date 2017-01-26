@@ -2014,6 +2014,7 @@
 #include "code\modules\shieldgen\shieldwallgen.dm"
 #include "code\modules\shuttles\_defines.dm"
 #include "code\modules\shuttles\antagonist.dm"
+#include "code\modules\shuttles\bluespace_drive.dm"
 #include "code\modules\shuttles\departmental.dm"
 #include "code\modules\shuttles\escape_pods.dm"
 #include "code\modules\shuttles\shuttle.dm"
