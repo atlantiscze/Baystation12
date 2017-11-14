@@ -1,0 +1,65 @@
+{{if data.error}}
+	<h2>Error</h2>
+	<div class="itemLabel">
+		Information:
+	</div>
+	<div class="itemContent">
+		{{:data.error}}
+	</div>
+	<div class="itemLabel">
+		Reset Program:
+	</div>
+	<div class="itemContent">
+		{{:helper.link("RESET", null, {'PRG_reseterror' : 1})}}
+	</div>
+	<hr>
+{{/if}}
+
+{{if data.current_book}}
+	<h2>{{:data.current_book.title}}</h2>
+	<div class="item">
+		<div class="itemLabel">
+			Author: {{:data.current_book.author}}
+			USBN : {{:data.current_book.id}}
+		</div>
+		<div class="itemContent">
+			{{:data.current_book.content}}
+		</div>
+		<div class="itemContent">
+			{{:helper.link("Close", null, {'PRG_closebook' : 1})}} {{:helper.link("Print", null, {'PRG_printbook' : 1})}}
+		</div>
+	</div>
+{{else}}
+
+	<h2>External Archives:</h2>
+	<table>
+		<tr><td>
+			<td>{{:helper.link("View By USBN", null, {'PRG_viewid' : 1})}}
+			<td>{{:helper.link("Upload From Scanner", null, {'PRG_uploadbook' : 1})}}
+			<td>{{:helper.link("Connect to Scanner", null, {'PRG_connectscanner' : 1})}}
+				{{if data.scanner}}
+			<td class="itemLabel">Scanner Found
+				{{else}}
+			<td class="itemLabel">No Scanner Connected
+				{{/if}}
+		</div>
+	</table><br>
+	<table>
+		<tr><td>
+			<td>{{:helper.link("Title", null, {'PRG_sortby' : 'title'})}}
+			<td>{{:helper.link("Author", null, {'PRG_sortby' : 'author'})}}
+			<td>{{:helper.link("Category", null, {'PRG_sortby' : 'category'})}}
+			<td>{{:helper.link("USBN", null, {'PRG_sortby' : 'id'})}}
+		</div>
+		{{for data.book_list}}
+		<tr><td>{{:helper.link("View", null, {'PRG_viewbook' : value.id})}}
+			<td>{{:value.title}}
+			<td>{{:value.author}}
+			<td>{{:value.category}}
+			<td>{{:value.id}}
+		</div>
+		{{/for}}
+	</table>
+{{/if}}
+
+<br><br><hr><i>NTOS v2.0.4b Copyright NanoTrasen 2557 - 2561</i>
