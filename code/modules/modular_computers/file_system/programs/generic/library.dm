@@ -149,7 +149,7 @@ The answer was five and a half years -ZeroBits
 			return 0
 		return 1
 	if(href_list["PRG_sortby"])
-		sort_by = href_list["PRG_sortby"]
+		sort_by = sanitizeSQL(href_list["PRG_sortby"])
 	if(href_list["PRG_reseterror"])
 		if(error_message)
 			current_book = null
@@ -181,7 +181,7 @@ The answer was five and a half years -ZeroBits
 	if(!dbcon_old.IsConnected())
 		PRG.error_message = "Unable to contact External Archive. Please contact your system administrator for assistance."
 	else
-		var/DBQuery/query = dbcon_old.NewQuery("SELECT id, author, title, category FROM library ORDER BY [PRG.sort_by]")
+		var/DBQuery/query = dbcon_old.NewQuery("SELECT id, author, title, category FROM library ORDER BY "+sanitizeSQL(PRG.sort_by))
 		query.Execute()
 
 		while(query.NextRow())
