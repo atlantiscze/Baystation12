@@ -69,3 +69,27 @@ datum/unit_test/roundstart_cable_connectivity/start_test()
 	else
 		pass("No areas with duplicated APCs have been found.")
 	return 1
+
+/datum/unit_test/all_apcs_powered
+	name = "POWER: All APCs should be powered or turned off"
+
+/datum/unit_test/all_apcs_powered/start_test()
+	var/failure = ""
+	for(var/obj/machinery/power/apc/APC in world)
+		// All power channels turned off or main breaker turned off
+		if((!APC.operating) || (!APC.lighting && !APC.environ && !APC.equipment))
+			continue
+		// Powered
+		if(APC.main_status == 2)
+			continue
+		// Not powered - error the test
+		var/area/A = get_area(APC)
+		if(failure)
+			failure = "[failure]\n"
+		failure = "[failure]Unpowered and turned on APC in area [A.name]: [log_info_line(APC)]"
+
+	if(failure)
+		fail(failure)
+	else
+		pass("No areas with duplicated APCs have been found.")
+	return 1
